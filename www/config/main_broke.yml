@@ -1,0 +1,161 @@
+ansible:
+  title: Red Hat Ansible Automation Platform
+  frontend:
+    sub_apps:
+      - id: automation-analytics
+        default: true
+      - id: automation-hub
+      - id: catalog
+  top_level: true
+
+api-docs:
+  title: API Documentation
+  deployment_repo: https://github.com/RedHatInsights/api-frontend-build
+  frontend:
+    paths:
+      - /docs/api
+      - /docs
+  source_repo: https://github.com/RedHatInsights/api-frontend
+
+automation-analytics:
+  title: Automation Analytics
+  api:
+    versions:
+      - v1
+  deployment_repo: https://github.com/RedHatInsights/tower-analytics-frontend-build.git
+  frontend:
+    paths:
+      - /ansible
+      - /ansible/automation-analytics
+    sub_apps:
+      - id: clusters
+        title: Clusters
+        default: true
+      - id: organization-statistics
+        title: Organization Statistics
+      - id: automation-calculator
+        title: Automation calculator
+      - id: notifications
+        title: Notifications
+      - id: stuff
+        title: My STUFF
+  source_repo: https://github.com/RedHatInsights/tower-analytics-frontend
+
+chrome:
+  channel: '#flip-mode-squad'
+  deployment_repo: https://github.com/RedHatInsights/insights-chrome-build
+  source_repo: https://github.com/RedHatInsights/insights-chrome
+
+compliance:
+  title: Compliance
+  api:
+    versions:
+      - v1
+  deployment_repo: https://github.com/RedHatInsights/compliance-frontend-build
+  frontend:
+    paths:
+      - /insights/compliance
+    sub_apps:
+      - id: reports
+        title: Reports
+        default: true
+      - id: scappolicies
+        title: SCAP Policies
+      - id: systems
+        title: Systems
+  source_repo: https://github.com/RedHatInsights/compliance-frontend
+
+config:
+  title: Cloud Services Config
+  deployment_repo: https://github.com/RedHatInsights/cloud-services-config
+  source_repo: https://github.com/RedHatInsights/cloud-services-config
+
+details:
+  title: Details
+  frontend:
+    sub_apps:
+      - id: ocp
+        title: OpenShift
+      - id: aws
+        title: Infrastructure
+
+dashboard:
+  title: Dashboard
+  channel: '#flip-mode-squad'
+  deployment_repo: https://github.com/RedHatInsights/insights-dashboard-build
+  frontend:
+    paths:
+      - /insights
+      - /insights/dashboard
+  source_repo: https://github.com/RedHatInsights/insights-dashboard
+
+docs:
+  title: Documentation
+  channel: '#flip-mode-squad'
+  frontend:
+    sub_apps:
+      - id: api-docs
+        reload: api
+        default: true
+  top_level: true
+
+frontend-assets:
+  title: Frontend Assets
+  deployment_repo: https://github.com/RedHatInsights/frontend-assets-build.git
+  source_repo: https://github.com/RedHatInsights/frontend-assets
+
+hooks:
+  title: Web Hooks Service
+  api:
+    versions:
+      - v1
+    isBeta: true
+  deployment_repo: https://github.com/RedHatInsights/notifications-frontend-build.git
+  frontend:
+    title: Hooks
+    paths:
+      - /settings/hooks
+  source_repo: https://github.com/RedHatInsights/notifications-frontend
+
+ingress:
+  title: Ingress
+  api:
+    versions:
+      - v1
+
+landing:
+  channel: '#flip-mode-squad'
+  deployment_repo: https://github.com/RedHatInsights/landing-page-frontend-build
+  source_repo: https://github.com/RedHatInsights/landing-page-frontend
+
+settings:
+  title: Settings
+  top_level: true
+  frontend:
+    sub_apps:
+      - id: rbac
+        default: true
+      - id: sources
+      - id: applications
+
+storybook:
+  channel: '#flip-mode-squad'
+  deployment_repo: https://github.com/RedHatInsights/insights-frontend-storybook-build
+  frontend:
+    paths:
+      - /docs/storybook
+  source_repo: https://github.com/RedHatInsights/insights-frontend-storybook
+
+user-preferences:
+  title: User Preferences
+  deployment_repo: https://github.com/RedHatInsights/user-preferences-frontend-build
+  top_level: true
+  frontend:
+    title: User preferences
+    paths:
+      - /user-preferences
+    sub_apps:
+      - id: email
+        title: Email preferences
+        default: true
+  source_repo: https://github.com/RedHatInsights/user-preferences-frontend

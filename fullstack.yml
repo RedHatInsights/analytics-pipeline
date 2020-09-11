@@ -1,0 +1,124 @@
+version: '3'
+
+networks:
+  testnet:
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+
+services:
+
+  access.redhat.com:
+    build:
+      context: .
+      dockerfile: ./services/access.redhat.com/Dockerfile
+    image: python:3
+    environment:
+      - API_SECURE=1
+    volumes:
+      - ./services/access.redhat.com:/app
+    networks:
+        testnet:
+           ipv4_address: 172.23.0.2
+
+  sso.local.redhat.com:
+    image: quay.io/keycloak/keycloak:11.0.0
+    environment:
+        - KEYCLOAK_USER=admin
+        - KEYCLOAK_PASSWORD=admin
+        - PROXY_ADDRESS_FORWARDING=true
+    #ports:
+    #    - '8443:8443'
+    expose:
+        - 8443
+    networks:
+        testnet:
+           ipv4_address: 172.23.0.3
+
+  rbac:
+    build:
+      context: .
+      dockerfile: ./services/aa_backend/Dockerfile
+    image: python:3
+    environment:
+      - API_SECURE=1
+    volumes:
+      - ./services/aa_backend:/app
+
+  entitlements:
+    build:
+      context: .
+      dockerfile: ./services/aa_backend/Dockerfile
+    image: python:3
+    environment:
+      - API_SECURE=1
+    volumes:
+      - ./services/aa_backend:/app
+
+  chrome:
+    image: nginx
+    volumes:
+      - ./services/chrome/build:/usr/share/nginx/html/apps/chrome
+      #- ./services/chrome/node_modules:/usr/share/nginx/html/apps/chrome/node_modules
+    command: [nginx-debug, '-g', 'daemon off;']
+
+  config:
+    image: nginx
+    volumes:
+      - ./services/config:/usr/share/nginx/html/config
+    command: [nginx-debug, '-g', 'daemon off;']
+
+  landing:
+    image: nginx
+    volumes:
+      - ./services/landing/dist:/usr/share/nginx/html/apps/landing
+      - ./services/landing/dist/silent-check-sso.html:/usr/share/nginx/html/silent-check-sso.html
+      #- ./services/landing/node_modules:/usr/share/nginx/html/apps/landing/node_modules
+    command: [nginx-debug, '-g', 'daemon off;']
+
+  beta_landing:
+    image: nginx
+    volumes:
+      - ./services/landing/dist:/usr/share/nginx/html/beta/apps/landing
+      #- ./services/landing/dist/silent-check-sso.html:/usr/share/nginx/html/silent-check-sso.html
+      #- ./services/landing/node_modules:/usr/share/nginx/html/apps/landing/node_modules
+    command: [nginx-debug, '-g', 'daemon off;']
+
+  webroot:
+    image: nginx
+    volumes:
+      - ./services/webroot:/usr/share/nginx/html
+    command: [nginx-debug, '-g', 'daemon off;']
+
+  aa_backend:
+    build:
+      context: .
+      dockerfile: ./services/aa_backend/Dockerfile
+    image: python:3
+    volumes:
+      - ./services/aa_backend:/app
+
+  aa_frontend:
+    image: node:10.21
+    volumes:
+      - ./services/aa_frontend:/usr/share/app
+    expose:
+        - 8002
+    working_dir: /usr/share/app
+    command: >
+        bash -c "/usr/local/bin/npm install && /usr/local/bin/npm run start:container"
+
+  insights_proxy:
+    image: redhatinsights/insights-proxy
+    ports:
+      - '1337:1337'
+    environment:
+      - PLATFORM=linux
+      - CUSTOM_CONF=true
+    volumes:
+      - ./services/insights-proxy/spandx.config.js:/config/spandx.config.js
+    security_opt:
+      - label=disable
+    extra_hosts:
+      - "prod.foo.redhat.com:127.0.0.1"
+

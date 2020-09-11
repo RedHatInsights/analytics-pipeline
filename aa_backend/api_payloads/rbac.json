@@ -1,0 +1,255 @@
+{
+  "meta": {
+    "count": 30,
+    "limit": 1000,
+    "offset": 0
+  },
+  "links": {
+    "first": "/api/rbac/v1/access/?application=&format=json&limit=1000&offset=0",
+    "next": null,
+    "previous": null,
+    "last": "/api/rbac/v1/access/?application=&format=json&limit=1000&offset=0"
+  },
+  "data": [
+    {
+      "resourceDefinitions": [],
+      "permission": "insights:*:*"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "remediations:remediation:read"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "remediations:remediation:write"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "vulnerability:*:*"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "compliance:*:*"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "drift:*:*"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "patch:*:*"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "user",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "approval:requests:read"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "user",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "approval:requests:create"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "user",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "approval:actions:create"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "user",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "approval:actions:read"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "admin",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "approval:workflows:read"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "policies:*:*"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "migration-analytics:*:*"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "group",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:portfolios:read"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "group",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:portfolios:update"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "group",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:portfolios:order"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "group",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:portfolio_items:read"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "group",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:portfolio_items:update"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "group",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:portfolio_items:order"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "catalog:orders:write"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "user",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:orders:read"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "catalog:orders:order"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "catalog:order_items:write"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "user",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:order_items:read"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "catalog:order_items:order"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "user",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:progress_messages:read"
+    },
+    {
+      "resourceDefinitions": [
+        {
+          "attributeFilter": {
+            "key": "scope",
+            "value": "user",
+            "operation": "equal"
+          }
+        }
+      ],
+      "permission": "catalog:approval_requests:read"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "catalog:tenants:read"
+    },
+    {
+      "resourceDefinitions": [],
+      "permission": "subscriptions:*:*"
+    }
+  ]
+}

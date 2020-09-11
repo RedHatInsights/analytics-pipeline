@@ -1,0 +1,76 @@
+---
+version: '3'
+services:
+    insights_proxy:
+        container_name: insights_proxy
+        image: redhatinsights/insights-proxy
+        ports:
+            - 1337:1337
+        environment:
+            - PLATFORM=linux
+            - CUSTOM_CONF=true
+        security_opt:
+            - label=disable
+        extra_hosts:
+            - prod.foo.redhat.com:127.0.0.1
+        volumes:
+            - ./www/spandx.config.js:/config/spandx.config.js
+    webroot:
+        container_name: webroot
+        image: nginx
+        volumes:
+            - ./www:/usr/share/nginx/html
+        command:
+            - nginx-debug
+            - -g
+            - daemon off;
+    chrome:
+        container_name: chrome
+        image: nginx
+        volumes:
+            - ./src/insights-chrome:/usr/share/nginx/html
+        command:
+            - nginx-debug
+            - -g
+            - daemon off;
+    chrome_beta:
+        container_name: chrome_beta
+        image: nginx
+        volumes:
+            - ./src/insights-chrome:/usr/share/nginx/html
+        command:
+            - nginx-debug
+            - -g
+            - daemon off;
+    landing:
+        container_name: landing
+        image: nginx
+        volumes:
+            - ./src/landing-page-frontend/dist:/usr/share/nginx/html/apps/landing
+        command:
+            - nginx-debug
+            - -g
+            - daemon off;
+    landing_beta:
+        container_name: landing_beta
+        image: nginx
+        volumes:
+            - ./src/landing-page-frontend/dist:/usr/share/nginx/html/beta/apps/landing
+        command:
+            - nginx-debug
+            - -g
+            - daemon off;
+    entitlements:
+        container_name: entitlements
+        image: python:3
+        build:
+            context: src/entitlements
+        volumes:
+            - ./src/entitlements:/app
+    rbac:
+        container_name: rbac
+        image: python:3
+        build:
+            context: src/rbac
+        volumes:
+            - ./src/rbac:/app
