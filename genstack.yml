@@ -1,6 +1,33 @@
 ---
 version: '3'
 services:
+    kcpostgres:
+        container_name: kcpostgres
+        image: postgres:12.2
+        environment:
+            POSTGRES_DB: keycloak
+            POSTGRES_USER: keycloak
+            POSTGRES_PASSWORD: keycloak
+    sso.local.redhat.com:
+        container_name: sso.local.redhat.com
+        image: quay.io/keycloak/keycloak:11.0.0
+        environment:
+            - KEYCLOAK_USERNAME=admin
+            - KEYCLOAK_PASSWORD=password
+        ports:
+            - 8443:8443
+        depends_on:
+            - kcpostgres
+    kcadmin:
+        container_name: kcadmin
+        image: python:3
+        build:
+            context: keycloak_admin_fe
+        volumes:
+            - ./keycloak_admin_fe:/app
+        depends_on:
+            - sso.local.redhat.com
+        command: /bin/bash -c "cd /app && pip install -r requirements.txt && flask run --host=0.0.0.0 --port=80"
     insights_proxy:
         container_name: insights_proxy
         image: redhatinsights/insights-proxy
@@ -13,7 +40,6 @@ services:
             - label=disable
         extra_hosts:
             - prod.foo.redhat.com:127.0.0.1
-            - sso.local.redhat.com:172.19.0.2
         volumes:
             - ./www/spandx.config.js:/config/spandx.config.js
     webroot:
@@ -25,8 +51,6 @@ services:
             - nginx-debug
             - -g
             - daemon off;
-        extra_hosts:
-            - sso.local.redhat.com:172.19.0.2
     chrome:
         container_name: chrome
         image: nginx
@@ -36,8 +60,6 @@ services:
             - nginx-debug
             - -g
             - daemon off;
-        extra_hosts:
-            - sso.local.redhat.com:172.19.0.2
     chrome_beta:
         container_name: chrome_beta
         image: nginx
@@ -47,8 +69,6 @@ services:
             - nginx-debug
             - -g
             - daemon off;
-        extra_hosts:
-            - sso.local.redhat.com:172.19.0.2
     landing:
         container_name: landing
         image: nginx
@@ -58,8 +78,6 @@ services:
             - nginx-debug
             - -g
             - daemon off;
-        extra_hosts:
-            - sso.local.redhat.com:172.19.0.2
     landing_beta:
         container_name: landing_beta
         image: nginx
@@ -69,8 +87,6 @@ services:
             - nginx-debug
             - -g
             - daemon off;
-        extra_hosts:
-            - sso.local.redhat.com:172.19.0.2
     entitlements:
         container_name: entitlements
         image: python:3
@@ -78,8 +94,6 @@ services:
             context: src/entitlements
         volumes:
             - ./src/entitlements:/app
-        extra_hosts:
-            - sso.local.redhat.com:172.19.0.2
     rbac:
         container_name: rbac
         image: python:3
@@ -87,5 +101,3 @@ services:
             context: src/rbac
         volumes:
             - ./src/rbac:/app
-        extra_hosts:
-            - sso.local.redhat.com:172.19.0.2

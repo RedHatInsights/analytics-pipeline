@@ -4,7 +4,7 @@ keycloak:
 	docker run \
 		--name=keycloak \
 		-e "KEYCLOAK_USER=admin" \
-		-e "KEYCLOAK_PASSWORD=admin" \
+		-e "KEYCLOAK_PASSWORD=password" \
 		-p 8443:8443 \
 		-it quay.io/keycloak/keycloak:11.0.0
 

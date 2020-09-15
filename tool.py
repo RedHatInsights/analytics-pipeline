@@ -109,9 +109,10 @@ class CloudBuilder:
     webroot = "www"
     checkouts_root = "src"
     cache_root = "cache"
-    keycloak = "https://172.19.0.2:8443"
+    #keycloak = "https://172.19.0.2:8443"
+    keycloak = "https://sso.local.redhat.com:8443"
     #keycloak = "https://sso.local.redhat.com:8443"
-    keycloak_ip = "172.19.0.2"
+    #keycloak_ip = "172.19.0.2"
     frontend = "https://192.168.122.81:8002"
     backend = "http://192.168.122.81:5000"
 
@@ -127,6 +128,32 @@ class CloudBuilder:
         ds = {
             'version': '3',
             'services': {
+                'kcpostgres': {
+                    'container_name': 'kcpostgres',
+                    'image': 'postgres:12.2',
+                    'environment': {
+                        'POSTGRES_DB': 'keycloak',
+                        'POSTGRES_USER': 'keycloak',
+                        'POSTGRES_PASSWORD': 'keycloak',
+                    }
+                },
+                'sso.local.redhat.com': {
+                    'container_name': 'sso.local.redhat.com',
+                    'image': 'quay.io/keycloak/keycloak:11.0.0',
+                    'environment': ['KEYCLOAK_USERNAME=admin', 'KEYCLOAK_PASSWORD=password'],
+                    'ports': ['8443:8443'],
+                    'depends_on': ['kcpostgres']
+                },
+                'kcadmin': {
+                    'container_name': 'kcadmin',
+                    'image': 'python:3',
+                    'build': {
+                        'context': "keycloak_admin_fe",
+                    },
+                    'volumes': ["./keycloak_admin_fe:/app"],
+                    'depends_on': ['sso.local.redhat.com'],
+                    'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && flask run --host=0.0.0.0 --port=80"'
+                },
                 'insights_proxy': {
                     'container_name': 'insights_proxy',
                     'image': 'redhatinsights/insights-proxy',
@@ -140,7 +167,6 @@ class CloudBuilder:
                     'container_name': 'webroot',
                     'image': 'nginx',
                     'volumes': ["./www:/usr/share/nginx/html"],
-                    #'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend', 'dist')}:/usr/share/nginx/html"],
                     'command': ['nginx-debug', '-g', 'daemon off;']
                 },
                 'chrome': {
@@ -187,6 +213,7 @@ class CloudBuilder:
             }
         }
 
+        '''
         kctuple = '%s:%s' % ('sso.local.redhat.com', self.keycloak_ip)
         for k,v in ds['services'].items():
             #'extra_hosts': ['prod.foo.redhat.com:127.0.0.1'],
@@ -194,6 +221,7 @@ class CloudBuilder:
                 ds['services'][k]['extra_hosts'] = []
             if kctuple not in ds['services'][k]['extra_hosts']:
                 ds['services'][k]['extra_hosts'].append(kctuple)
+        '''
 
         yaml = YAML(typ='rt', pure=True)
         yaml.preserve_quotes = True
@@ -406,13 +434,14 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--skip_chrome_reset', action='store_true')
+    parser.add_argument('--skip_chrome_build', action='store_true')
     args = parser.parse_args()
     #import epdb; epdb.st()
 
     cbuilder = CloudBuilder()
 
     #cbuilder.set_chrome_jwt_constants()
-    cbuilder.make_chrome(build=True, reset=not args.skip_chrome_reset)
+    cbuilder.make_chrome(build=not args.skip_chrome_build, reset=not args.skip_chrome_reset)
     #cbuilder.fix_chrome()
     cbuilder.make_www()
     cbuilder.make_landing()
