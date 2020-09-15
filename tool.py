@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 import shutil
 import subprocess
@@ -108,7 +109,9 @@ class CloudBuilder:
     webroot = "www"
     checkouts_root = "src"
     cache_root = "cache"
-    keycloak = "https://172.19.0.3:8443"
+    keycloak = "https://172.19.0.2:8443"
+    #keycloak = "https://sso.local.redhat.com:8443"
+    keycloak_ip = "172.19.0.2"
     frontend = "https://192.168.122.81:8002"
     backend = "http://192.168.122.81:5000"
 
@@ -183,6 +186,14 @@ class CloudBuilder:
 
             }
         }
+
+        kctuple = '%s:%s' % ('sso.local.redhat.com', self.keycloak_ip)
+        for k,v in ds['services'].items():
+            #'extra_hosts': ['prod.foo.redhat.com:127.0.0.1'],
+            if 'extra_hosts' not in v:
+                ds['services'][k]['extra_hosts'] = []
+            if kctuple not in ds['services'][k]['extra_hosts']:
+                ds['services'][k]['extra_hosts'].append(kctuple)
 
         yaml = YAML(typ='rt', pure=True)
         yaml.preserve_quotes = True
@@ -262,7 +273,7 @@ class CloudBuilder:
             print(cmd)
             subprocess.run(cmd, cwd=srcpath, shell=True)
 
-    def make_chrome(self, build=False):
+    def make_chrome(self, build=False, reset=True, set_jwt=True, fix=True):
 
         # clone it
         repo = 'https://github.com/RedHatInsights/insights-chrome'
@@ -276,7 +287,16 @@ class CloudBuilder:
             print(cmd)
             subprocess.run(cmd)
 
-        self.set_chrome_jwt_constants()
+        # reset the source
+        if reset:
+            cmd = f'git reset --hard'
+            cmd = cmd.split()
+            print(cmd)
+            subprocess.run(cmd, cwd=srcpath)
+
+        # set sso url(s) ...
+        if set_jwt:
+            self.set_chrome_jwt_constants()
 
         '''
         # install pkgs from cache or from npm
@@ -325,7 +345,8 @@ class CloudBuilder:
             cmd = 'ln -s ../apps apps'
             subprocess.run(cmd, cwd=bpath, shell=True)
 
-
+        if fix:
+            self.fix_chrome()
 
     def set_chrome_jwt_constants(self):
         # src/insights-chrome/src/js/jwt/constants.js
@@ -382,10 +403,17 @@ class CloudBuilder:
 
 
 def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--skip_chrome_reset', action='store_true')
+    args = parser.parse_args()
+    #import epdb; epdb.st()
+
     cbuilder = CloudBuilder()
+
     #cbuilder.set_chrome_jwt_constants()
-    cbuilder.make_chrome(build=True)
-    cbuilder.fix_chrome()
+    cbuilder.make_chrome(build=True, reset=not args.skip_chrome_reset)
+    #cbuilder.fix_chrome()
     cbuilder.make_www()
     cbuilder.make_landing()
     cbuilder.make_entitlements()
