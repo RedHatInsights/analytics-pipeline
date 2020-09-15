@@ -3,9 +3,9 @@ const localhost = (process.env.PLATFORM === 'linux') ? 'localhost' : 'host.docke
 
 module.exports = {
     routes: {
-        '/apps/automation-analytics': { host: `https://192.168.122.81:8002` },
-        '/ansible/automation-analytics': { host: `https://192.168.122.81:8002` },
-        '/beta/ansible/automation-analytics': { host: `https://192.168.122.81:8002` },
+        '/apps/automation-analytics': { host: `https://frontend:8002` },
+        '/ansible/automation-analytics': { host: `https://frontend:8002` },
+        '/beta/ansible/automation-analytics': { host: `https://frontend:8002` },
         '/api/tower-analytics': { host: `http://192.168.122.81:5000` },
         '/apps/chrome': { host: `http://chrome` },
         '/apps/landing': { host: `http://landing` },

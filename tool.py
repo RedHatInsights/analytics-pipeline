@@ -116,7 +116,8 @@ class CloudBuilder:
     frontend = "https://192.168.122.81:8002"
     backend = "http://192.168.122.81:5000"
 
-    def __init__(self):
+    def __init__(self, args=None):
+        self.args = args
         if not os.path.exists(self.checkouts_root):
             os.makedirs(self.checkouts_root)
         if not os.path.exists(self.cache_root):
@@ -140,7 +141,16 @@ class CloudBuilder:
                 'sso.local.redhat.com': {
                     'container_name': 'sso.local.redhat.com',
                     'image': 'quay.io/keycloak/keycloak:11.0.0',
-                    'environment': ['KEYCLOAK_USERNAME=admin', 'KEYCLOAK_PASSWORD=password'],
+                    'environment': {
+                        'DB_VENDOR': 'postgres',
+                        'DB_ADDR': 'kcpostgres',
+                        'DB_DATABASE': 'keycloak',
+                        'DB_USER': 'keycloak',
+                        'DB_PASSWORD': 'keycloak',
+                        'PROXY_ADDRESS_FORWARDING': "true",
+                        'KEYCLOAK_USERNAME': 'admin',
+                        'KEYCLOAK_PASSWORD': 'password',
+                    },
                     'ports': ['8443:8443'],
                     'depends_on': ['kcpostgres']
                 },
@@ -213,6 +223,27 @@ class CloudBuilder:
             }
         }
 
+        # add frontend if path or hash given
+        if self.args.frontend_path or self.args.frontend_hash:
+            if self.args.frontend_hash:
+                raise Exception('frontend hash not yet implemented!')
+            elif self.args.frontend_path:
+                fs = {
+                    'container_name': 'frontend',
+                    'image': 'node:10.22.0',
+                    'user': 'node',
+                    'ports': ['8002:8002'],
+                    'environment': {
+                        'DEBUG': '*:*',
+                    },
+                    'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
+                    'volumes': [f"{os.path.abspath(os.path.expanduser(self.args.frontend_path))}:/app"]
+                }
+                ds['services']['frontend'] = fs
+
+        #import epdb; epdb.st()
+
+
         '''
         kctuple = '%s:%s' % ('sso.local.redhat.com', self.keycloak_ip)
         for k,v in ds['services'].items():
@@ -244,8 +275,25 @@ class CloudBuilder:
 
     def make_spandx(self):
         stemp = SPANDX_TEMPLATE
-        stemp = stemp.replace("FRONTEND", self.frontend)
-        stemp = stemp.replace("BACKEND", self.backend)
+
+        if self.args.frontend_path:
+            stemp = stemp.replace("FRONTEND", 'https://frontend:8002')
+        elif self.args.frontend_hash:
+            stemp = stemp.replace("FRONTEND", 'https://frontend:8002')
+        elif self.args.frontend_address:
+            stemp = stemp.replace("FRONTEND", self.args.frontend_address)
+        else:
+            stemp = stemp.replace("FRONTEND", self.frontend)
+
+        if self.args.backend_path:
+            stemp = stemp.replace("BACKEND", 'https://backend:443')
+        elif self.args.backend_hash:
+            stemp = stemp.replace("BACKEND", 'https://backend:443')
+        elif self.args.backend_address:
+            stemp = stemp.replace("BACKEND", self.args.frontend_address)
+        else:
+            stemp = stemp.replace("BACKEND", self.backend)
+
         with open(os.path.join(self.webroot, 'spandx.config.js'), 'w') as f:
             f.write(stemp)
 
@@ -433,12 +481,20 @@ class CloudBuilder:
 def main():
 
     parser = argparse.ArgumentParser()
+    #parser.add_argument('--frontend', choices=['local', 'container'], default='local')
+    parser.add_argument('--frontend_address', help="use local or remote address for frontend")
+    parser.add_argument('--frontend_hash', help="what aa frontend hash to use")
+    parser.add_argument('--frontend_path', help="path to an aa frontend checkout")
+    #parser.add_argument('--backend', choices=['local', 'container', 'mock_container'], default='local')
+    parser.add_argument('--backend_address', help="use local or remote address for backend")
+    parser.add_argument('--backend_hash', help="what aa backend hash to use")
+    parser.add_argument('--backend_path', help="path to an aa backend checkout")
     parser.add_argument('--skip_chrome_reset', action='store_true')
     parser.add_argument('--skip_chrome_build', action='store_true')
     args = parser.parse_args()
     #import epdb; epdb.st()
 
-    cbuilder = CloudBuilder()
+    cbuilder = CloudBuilder(args=args)
 
     #cbuilder.set_chrome_jwt_constants()
     cbuilder.make_chrome(build=not args.skip_chrome_build, reset=not args.skip_chrome_reset)

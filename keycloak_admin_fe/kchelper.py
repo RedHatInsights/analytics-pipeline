@@ -16,6 +16,19 @@ class KeyCloakHelper:
         self.username = username
         self.password = password
 
+        self.wait_for_server()
+
+    def wait_for_server(self):
+        while True:
+            print('attempting keycloak connection to %s ...' % self.server)
+            try:
+                admin = self.get_admin_object()
+                break
+            except Exception as e:
+                print(e)
+            time.sleep(2)
+        print('connected to keycloak server %s' % self.server)
+
     def get_mapper(self, attribute, mtype='String'):
         mapper = {
             'name': attribute,
