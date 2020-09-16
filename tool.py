@@ -148,7 +148,7 @@ class CloudBuilder:
                         'DB_USER': 'keycloak',
                         'DB_PASSWORD': 'keycloak',
                         'PROXY_ADDRESS_FORWARDING': "true",
-                        'KEYCLOAK_USERNAME': 'admin',
+                        'KEYCLOAK_USER': 'admin',
                         'KEYCLOAK_PASSWORD': 'password',
                     },
                     'ports': ['8443:8443'],

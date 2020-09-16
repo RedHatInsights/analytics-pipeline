@@ -106,9 +106,10 @@ class NewUserForm(FlaskForm):
     submit = SubmitField('submit')
 
 
-username = 'admin'
-password = 'password'
-server = "https://172.19.0.2:8443"
+username = os.environ.get('KEYCLOAK_USERNAME', 'admin')
+password = os.environ.get('KEYCLOAK_PASSWORD', 'password')
+#server = "https://172.19.0.2:8443"
+server = os.environ.get('KEYCLOAK_URL', "https://sso.local.redhat.com:8443")
 REALM = "redhat-external"
 KH = KeyCloakHelper(server, username, password)
 

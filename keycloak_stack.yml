@@ -12,6 +12,8 @@ services:
     keycloak:
         image: quay.io/keycloak/keycloak:11.0.0
         container_name: keycloak
+        depends_on:
+            - kcpostgres
         environment:
             DB_VENDOR: POSTGRES
             DB_ADDR: kcpostgres

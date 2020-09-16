@@ -19,14 +19,16 @@ class KeyCloakHelper:
         self.wait_for_server()
 
     def wait_for_server(self):
+        count = 1
         while True:
-            print('attempting keycloak connection to %s ...' % self.server)
+            print('%s attempting keycloak connection to %s ...' % (count, self.server))
             try:
                 admin = self.get_admin_object()
                 break
             except Exception as e:
                 print(e)
-            time.sleep(2)
+            count += 1
+            time.sleep(5)
         print('connected to keycloak server %s' % self.server)
 
     def get_mapper(self, attribute, mtype='String'):
@@ -59,6 +61,25 @@ class KeyCloakHelper:
     def get_realms(self):
         admin = self.get_admin_object()
         return admin.get_realms()
+
+    def get_realm_names(self):
+        realms = self.get_realms()
+        realm_names = [x['realm'] for x in realms]
+        return realm_names
+
+    def create_realm(self, realm):
+        radmin = self.get_realm_admin(realm)
+        radmin.create_realm({'realm': realm, 'enabled': True})
+
+    def get_realm_clients(self, realm):
+        radmin = self.get_realm_admin(realm)
+        clients = radmin.get_clients()
+        return clients
+
+    def get_realm_client_names(self, realm):
+        clients = self.get_realm_clients(realm)
+        client_names = [x['clientId'] for x in clients]
+        return client_names
 
     def get_realm_users(self, realm):
         radmin = self.get_realm_admin(realm)
@@ -118,6 +139,12 @@ class KeyCloakHelper:
             })
 
     def create_realm_user(self, realm, uname, password, fname, lname, email, account_id, org_id):
+        realm_names = self.get_realm_names()
+        if realm not in realm_names:
+            self.create_realm(realm)
+        realm_client_names = self.get_realm_client_names(realm)
+        if 'cloud-services' not in realm_client_names:
+            self.create_realm_client(realm, 'cloud-services')
         radmin = self.get_realm_admin(realm)
         radmin.create_user({
             'enabled': True,
