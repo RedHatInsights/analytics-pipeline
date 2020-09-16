@@ -33,6 +33,14 @@ the rest of the stack for user verification (specifically the account number).
 This stack will create a local keycloak instance, with the realm and client setup along with a default user "bob"
 with password "redhat1234".
 
+## keycloak_admin
+
+Keycloak is one of those services that is a full time job to learn and manage. Configuring it for what is expected
+in the insights platform is especially complicated. Real settings, client setttings, client mappers, client scopes,
+user attributes, etc ... it's a lot. Keycloak admin is another flask app with a helper library that when spun up,
+creates the realm, client+mappers and the default "bob" user. Once the stack is up, users can visit the container's
+IP address and add more users via form and it will set everything properly on the backend.
+
 ## tool.py
 
 Getting all the bits necessary to use a local keycloak instance for disconnected SSO are complicated. The steps are
