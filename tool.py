@@ -126,6 +126,7 @@ class CloudBuilder:
             os.makedirs(self.webroot)
 
         self.make_aa_frontend()
+        self.make_aa_backend()
 
         #cbuilder.set_chrome_jwt_constants()
         self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
@@ -140,8 +141,27 @@ class CloudBuilder:
 
 
     def create_compose_file(self):
+        '''
+        networks:
+          testnet:
+            ipam:
+              config:
+                - subnet: 172.23.0.0/24
+        networks:
+            testnet:
+               ipv4_address: 172.23.0.3
+
+        '''
+
         ds = {
             'version': '3',
+            'networks': {
+                'ssonet': {
+                    'ipam': {
+                        'config': [{'subnet': '172.23.0.0/24'}]
+                    }
+                }
+            },
             'services': {
                 'kcpostgres': {
                     'container_name': 'kcpostgres',
@@ -150,6 +170,11 @@ class CloudBuilder:
                         'POSTGRES_DB': 'keycloak',
                         'POSTGRES_USER': 'keycloak',
                         'POSTGRES_PASSWORD': 'keycloak',
+                    },
+                    'networks': {
+                        'ssonet': {
+                            'ipv4_address': '172.23.0.2'
+                        }
                     }
                 },
                 'sso.local.redhat.com': {
@@ -166,18 +191,29 @@ class CloudBuilder:
                         'KEYCLOAK_PASSWORD': 'password',
                     },
                     'ports': ['8443:8443'],
-                    'depends_on': ['kcpostgres']
+                    'depends_on': ['kcpostgres'],
+                    'networks': {
+                        'ssonet': {
+                            'ipv4_address': '172.23.0.3'
+                        }
+                    }
                 },
                 'kcadmin': {
                     'container_name': 'kcadmin',
                     'image': 'python:3',
                     'build': {
-                        'context': "keycloak_admin_fe",
+                        'context': f"{os.path.join(self.checkouts_root, 'keycloak_admin')}",
                     },
-                    'volumes': ["./keycloak_admin_fe:/app"],
+                    'volumes': [f"./{os.path.join(self.checkouts_root, 'keycloak_admin')}:/app"],
                     'depends_on': ['sso.local.redhat.com'],
                     #'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && flask run --host=0.0.0.0 --port=80"'
-                    'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && python -c \'from kchelper import init_realm; init_realm()\' && flask run --host=0.0.0.0 --port=80"'
+                    'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && python -c \'from kchelper import init_realm; init_realm()\' && flask run --host=0.0.0.0 --port=80"',
+                    'networks': {
+                        'ssonet': {
+                            'ipv4_address': '172.23.0.4'
+                        }
+                    }
+
                 },
                 'insights_proxy': {
                     'container_name': 'insights_proxy',
@@ -186,12 +222,12 @@ class CloudBuilder:
                     'environment': ['PLATFORM=linux', 'CUSTOM_CONF=true'],
                     'security_opt': ['label=disable'],
                     'extra_hosts': ['prod.foo.redhat.com:127.0.0.1'],
-                    'volumes': ['./www/spandx.config.js:/config/spandx.config.js']
+                    'volumes': [f'./{os.path.join(self.checkouts_root, "www", "spandx.config.js")}:/config/spandx.config.js']
                 },
                 'webroot': {
                     'container_name': 'webroot',
                     'image': 'nginx',
-                    'volumes': ["./www:/usr/share/nginx/html"],
+                    'volumes': [f"./{os.path.join(self.checkouts_root, 'www')}:/usr/share/nginx/html"],
                     'command': ['nginx-debug', '-g', 'daemon off;']
                 },
                 'chrome': {
@@ -224,7 +260,8 @@ class CloudBuilder:
                     'build': {
                         'context': f"{os.path.join(self.checkouts_root, 'entitlements')}",
                     },
-                    'volumes': [f"./{os.path.join(self.checkouts_root, 'entitlements')}:/app"]
+                    'volumes': [f"./{os.path.join(self.checkouts_root, 'entitlements')}:/app"],
+                    'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"'
                 },
                 'rbac': {
                     'container_name': 'rbac',
@@ -232,7 +269,8 @@ class CloudBuilder:
                     'build': {
                         'context': f"{os.path.join(self.checkouts_root, 'rbac')}",
                     },
-                    'volumes': [f"./{os.path.join(self.checkouts_root, 'rbac')}:/app"]
+                    'volumes': [f"./{os.path.join(self.checkouts_root, 'rbac')}:/app"],
+                    'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"'
                 }
 
             }
@@ -271,6 +309,25 @@ class CloudBuilder:
                 'volumes': [f"./{aa_fe_srcpath}:/app"]
             }
             ds['services']['aafrontend'] = fs
+
+        # build the backend?
+        if self.args.backend_mock:
+            aa_be_srcpath = os.path.join(self.checkouts_root, 'aa_backend_mock')
+            bs = {
+                'container_name': 'aabackend',
+                'image': 'python:3',
+                'build': {
+                    'context': f"./{aa_be_srcpath}"
+                },
+                'environment': {
+                    'API_SECURE': '1',
+                },
+                'volumes': [f"./{aa_be_srcpath}:/app"],
+                'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"'
+            }
+            ds['services']['aabackend'] = bs
+        else:
+            raise Exception('real backend not yet implemented!')
 
 
         '''
@@ -315,11 +372,13 @@ class CloudBuilder:
             stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
 
         if self.args.backend_path:
-            stemp = stemp.replace("BACKEND", 'https://backend:443')
+            stemp = stemp.replace("BACKEND", 'https://aabackend:443')
         elif self.args.backend_hash:
-            stemp = stemp.replace("BACKEND", 'https://backend:443')
+            stemp = stemp.replace("BACKEND", 'https://aabackend:443')
+        elif self.args.backend_mock:
+            stemp = stemp.replace("BACKEND", 'https://aabackend:443')
         elif self.args.backend_address:
-            stemp = stemp.replace("BACKEND", self.args.frontend_address)
+            stemp = stemp.replace("BACKEND", self.args.backend_address)
         else:
             stemp = stemp.replace("BACKEND", self.backend)
 
@@ -340,6 +399,10 @@ class CloudBuilder:
             print(cmd)
             subprocess.run(cmd, cwd=srcpath)
         #import epdb; epdb.st()
+
+    def make_aa_backend(self):
+        #import epdb; epdb.st()
+        pass
 
     def make_www(self):
         apps_path = os.path.join(self.webroot, 'apps')
@@ -533,6 +596,7 @@ def main():
     parser.add_argument('--backend_address', help="use local or remote address for backend")
     parser.add_argument('--backend_hash', help="what aa backend hash to use")
     parser.add_argument('--backend_path', help="path to an aa backend checkout")
+    parser.add_argument('--backend_mock', action='store_true', help="use the mock backend")
     parser.add_argument('--skip_chrome_reset', action='store_true')
     parser.add_argument('--skip_chrome_build', action='store_true')
     args = parser.parse_args()
