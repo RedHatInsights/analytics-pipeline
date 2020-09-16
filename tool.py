@@ -390,14 +390,16 @@ class CloudBuilder:
         srcpath = os.path.join(self.checkouts_root, 'tower-analytics-frontend')
         if not os.path.exists(srcpath):
             cmd = f'git clone {git_url} {srcpath}'
-            subprocess.run(cmd, shell=True)
+            res = subprocess.run(cmd, shell=True)
+            import epdb; epdb.st()
 
         # pre-install packages ...
         node_modules = os.path.join(srcpath, 'node_modules')
         if not os.path.exists(node_modules):
             cmd = [self.get_npm_path(), 'install']
             print(cmd)
-            subprocess.run(cmd, cwd=srcpath)
+            res = subprocess.run(cmd, cwd=srcpath)
+            import epdb; epdb.st()
         #import epdb; epdb.st()
 
     def make_aa_backend(self):
@@ -422,9 +424,11 @@ class CloudBuilder:
         # get index.html and make it point at the right chrome css file ...
         if not os.path.exists(os.path.join(self.webroot, 'index.html')):
             cmd = 'curl -o index.html https://cloud.redhat.com'
-            subprocess.run(cmd, cwd=self.webroot, shell=True)
+            res = subprocess.run(cmd, cwd=self.webroot, shell=True)
+            import epdb; epdb.st()
             cmd = 'sed -i.bak "s/chrome\..*\.css/chrome\.css/" index.html && rm -f index.html.bak'
-            subprocess.run(cmd, cwd=self.webroot, shell=True)
+            res = subprocess.run(cmd, cwd=self.webroot, shell=True)
+            import epdb; epdb.st()
 
         # symlink the silent-check-sso.html
         ssof = os.path.join(self.checkouts_root, 'landing-page-frontend', 'dist', 'silent-check-sso.html')
@@ -443,18 +447,21 @@ class CloudBuilder:
             cmd = f'git clone {repo} {srcpath}'
             cmd = cmd.split()
             print(cmd)
-            subprocess.run(cmd)
+            res = subprocess.run(cmd)
+            import epdb; epdb.st()
 
         nm = os.path.join(srcpath, 'node_modules')
         if not os.path.exists(nm):
             cmd = f'{self.get_npm_path()} install'
             print(cmd)
-            subprocess.run(cmd, cwd=srcpath, shell=True)
+            res = subprocess.run(cmd, cwd=srcpath, shell=True)
+            import epdb; epdb.st()
 
         if not os.path.exists(os.path.join(srcpath, 'dist')):
             cmd = f'{self.get_npm_path()} run build'
             print(cmd)
-            subprocess.run(cmd, cwd=srcpath, shell=True)
+            res = subprocess.run(cmd, cwd=srcpath, shell=True)
+            import epdb; epdb.st()
 
     def make_chrome(self, build=False, reset=True, set_jwt=True, fix=True):
 
@@ -468,14 +475,17 @@ class CloudBuilder:
             cmd = f'git clone {repo} {srcpath}'
             cmd = cmd.split()
             print(cmd)
-            subprocess.run(cmd)
+            res = subprocess.run(cmd)
+            import epdb; epdb.st()
 
         # reset the source
         if reset:
             cmd = f'git reset --hard'
             cmd = cmd.split()
             print(cmd)
-            subprocess.run(cmd, cwd=srcpath)
+            res = subprocess.run(cmd, cwd=srcpath)
+            if res.returncode != 0:
+                raise Exception('git reset failed')
 
         # set sso url(s) ...
         if set_jwt:
@@ -500,18 +510,24 @@ class CloudBuilder:
         if not os.path.exists(nm):
             cmd = [self.get_npm_path(), 'install']
             print(cmd)
-            subprocess.run(cmd, cwd=srcpath)
+            res = subprocess.run(cmd, cwd=srcpath)
+            if res.returncode != 0:
+                raise Exception('npm install failed')
 
         # build the src
         if os.path.exists(os.path.join(srcpath, 'build')) and build:
             shutil.rmtree(os.path.join(srcpath, 'build'))
         if not os.path.exists(os.path.join(srcpath, 'build')):
-            subprocess.run([self.get_npm_path(), 'run', 'build'], cwd=srcpath)
+            res = subprocess.run([self.get_npm_path(), 'run', 'build'], cwd=srcpath)
+            if res.returncode != 0:
+                raise Exception('npm build failed')
 
         # node_modules -must- be served from the build root
         if not os.path.exists(os.path.join(srcpath, 'build', 'node_modules')):
             cmd = 'ln -s ../node_modules node_modules'
-            subprocess.run(cmd, cwd=os.path.join(srcpath, 'build'), shell=True)
+            res = subprocess.run(cmd, cwd=os.path.join(srcpath, 'build'), shell=True)
+            if res.returncode != 0:
+                raise Exception('node_modules symlinking failed')
 
         # make a shim for /apps/chrome to build
         apps = os.path.join(srcpath, 'apps')
@@ -519,14 +535,18 @@ class CloudBuilder:
             os.makedirs(apps)
         if not os.path.exists(os.path.join(apps, 'chrome')):
             cmd = 'ln -s ../build chrome'
-            subprocess.run(cmd, cwd=apps, shell=True)
+            res = subprocess.run(cmd, cwd=apps, shell=True)
+            if res.returncode != 0:
+                raise Exception('build symlinking failed')
 
         bpath = os.path.join(srcpath, 'beta')
         if not os.path.exists(bpath):
             os.makedirs(bpath)
         if not os.path.exists(os.path.join(bpath, 'apps')):
             cmd = 'ln -s ../apps apps'
-            subprocess.run(cmd, cwd=bpath, shell=True)
+            res = subprocess.run(cmd, cwd=bpath, shell=True)
+            if res.returncode != 0:
+                raise Exception('apps symlinking failed')
 
         if fix:
             self.fix_chrome()
@@ -550,13 +570,17 @@ class CloudBuilder:
         if os.path.exists(os.path.join(srcpath, 'build', 'chrome.css')):
             os.remove(os.path.join(srcpath, 'build', 'chrome.css'))
         cmd = 'ln -s chrome.*.css chrome.css'
-        subprocess.run(cmd, cwd=os.path.join(srcpath, 'build'), shell=True)
+        res = subprocess.run(cmd, cwd=os.path.join(srcpath, 'build'), shell=True)
+        if res.returncode != 0:
+            raise Exception('chrome.css symlinking failed')
 
         # link the hashed js file to non-hashed
         if os.path.exists(os.path.join(srcpath, 'build', 'js', 'chrome.js')):
             os.remove(os.path.join(srcpath, 'build', 'js', 'chrome.js'))
         cmd = 'ln -s chrome.*.js chrome.js'
-        subprocess.run(cmd, cwd=os.path.join(srcpath, 'build', 'js'), shell=True)
+        res = subprocess.run(cmd, cwd=os.path.join(srcpath, 'build', 'js'), shell=True)
+        if res.returncode != 0:
+            raise Exception('chrome.js symlinking failed')
 
     def make_rbac(self):
         srcpath = os.path.join(self.checkouts_root, 'rbac')
