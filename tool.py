@@ -106,8 +106,8 @@ cryptography
 '''
 
 class CloudBuilder:
-    webroot = "www"
-    checkouts_root = "src"
+    checkouts_root = "srv"
+    webroot = "srv/www"
     cache_root = "cache"
     #keycloak = "https://172.19.0.2:8443"
     keycloak = "https://sso.local.redhat.com:8443"

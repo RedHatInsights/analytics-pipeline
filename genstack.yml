@@ -61,7 +61,7 @@ services:
         container_name: chrome
         image: nginx
         volumes:
-            - ./src/insights-chrome:/usr/share/nginx/html
+            - ./srv/insights-chrome:/usr/share/nginx/html
         command:
             - nginx-debug
             - -g
@@ -70,7 +70,7 @@ services:
         container_name: chrome_beta
         image: nginx
         volumes:
-            - ./src/insights-chrome:/usr/share/nginx/html
+            - ./srv/insights-chrome:/usr/share/nginx/html
         command:
             - nginx-debug
             - -g
@@ -79,7 +79,7 @@ services:
         container_name: landing
         image: nginx
         volumes:
-            - ./src/landing-page-frontend/dist:/usr/share/nginx/html/apps/landing
+            - ./srv/landing-page-frontend/dist:/usr/share/nginx/html/apps/landing
         command:
             - nginx-debug
             - -g
@@ -88,7 +88,7 @@ services:
         container_name: landing_beta
         image: nginx
         volumes:
-            - ./src/landing-page-frontend/dist:/usr/share/nginx/html/beta/apps/landing
+            - ./srv/landing-page-frontend/dist:/usr/share/nginx/html/beta/apps/landing
         command:
             - nginx-debug
             - -g
@@ -97,16 +97,16 @@ services:
         container_name: entitlements
         image: python:3
         build:
-            context: src/entitlements
+            context: srv/entitlements
         volumes:
-            - ./src/entitlements:/app
+            - ./srv/entitlements:/app
     rbac:
         container_name: rbac
         image: python:3
         build:
-            context: src/rbac
+            context: srv/rbac
         volumes:
-            - ./src/rbac:/app
+            - ./srv/rbac:/app
     aafrontend:
         container_name: aafrontend
         image: node:10.22.0
@@ -117,4 +117,4 @@ services:
             DEBUG: '*:*'
         command: /bin/bash -c "cd /app && npm install && npm run start:container"
         volumes:
-            - ./src/tower-analytics-frontend:/app
+            - ./srv/tower-analytics-frontend:/app
