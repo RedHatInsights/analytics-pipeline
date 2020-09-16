@@ -2,6 +2,16 @@
 
 Assembles and builds and runs the entire stack for automation-analytics including chrome,landing and sso.
 
+## Why
+
+To make it easier on AA developers and CI to spin up the full stack without leaking senstive information
+to the public internet. It's also a good intro to how sso/insights-platform/insights-chrome are connected
+to analytics and vice versa.
+
+Fault injection is another huge capability of this system. When happens when you have a valid sso user but isn't
+entitled for automation? You can find out. What happens when sso is down? You can find out. What happens when 
+the backend returns large amounts of data? You can find out.
+
 ## How to use
 
 **Make sure you have a functioning docker (not podman) setup. Ubuntu virtual machines are great for this.**
