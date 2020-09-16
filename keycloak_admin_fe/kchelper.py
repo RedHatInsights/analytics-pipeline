@@ -31,6 +31,9 @@ class KeyCloakHelper:
             time.sleep(5)
         print('connected to keycloak server %s' % self.server)
 
+    def create_bob(self):
+        self.create_realm_user('redhat-external', 'bob', 'redhat1234', 'bob', 'barker', 'bob@redhat.com', 1111, 1)
+
     def get_mapper(self, attribute, mtype='String'):
         mapper = {
             'name': attribute,
@@ -165,3 +168,11 @@ class KeyCloakHelper:
                 'value': password
             }]
         })
+
+
+def init_realm():
+    server = 'https://sso.local.redhat.com:8443'
+    un = 'admin'
+    pw = 'password'
+    kc = KeyCloakHelper(server, un, pw)
+    kc.create_bob()

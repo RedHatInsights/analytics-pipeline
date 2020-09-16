@@ -125,6 +125,20 @@ class CloudBuilder:
         if not os.path.exists(self.webroot):
             os.makedirs(self.webroot)
 
+        self.make_aa_frontend()
+
+        #cbuilder.set_chrome_jwt_constants()
+        self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
+        #cbuilder.fix_chrome()
+        self.make_www()
+        self.make_landing()
+        self.make_entitlements()
+        self.make_rbac()
+
+        self.make_spandx()
+        self.create_compose_file()
+
+
     def create_compose_file(self):
         ds = {
             'version': '3',
@@ -162,7 +176,8 @@ class CloudBuilder:
                     },
                     'volumes': ["./keycloak_admin_fe:/app"],
                     'depends_on': ['sso.local.redhat.com'],
-                    'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && flask run --host=0.0.0.0 --port=80"'
+                    #'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && flask run --host=0.0.0.0 --port=80"'
+                    'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && python -c \'from kchelper import init_realm; init_realm()\' && flask run --host=0.0.0.0 --port=80"'
                 },
                 'insights_proxy': {
                     'container_name': 'insights_proxy',
@@ -229,7 +244,7 @@ class CloudBuilder:
                 raise Exception('frontend hash not yet implemented!')
             elif self.args.frontend_path:
                 fs = {
-                    'container_name': 'frontend',
+                    'container_name': 'aafrontend',
                     'image': 'node:10.22.0',
                     'user': 'node',
                     'ports': ['8002:8002'],
@@ -241,7 +256,21 @@ class CloudBuilder:
                 }
                 ds['services']['frontend'] = fs
 
-        #import epdb; epdb.st()
+        else:
+            # build the frontend?
+            aa_fe_srcpath = os.path.join(self.checkouts_root, 'tower-analytics-frontend')
+            fs = {
+                'container_name': 'aafrontend',
+                'image': 'node:10.22.0',
+                'user': 'node',
+                'ports': ['8002:8002'],
+                'environment': {
+                    'DEBUG': '*:*',
+                },
+                'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
+                'volumes': [f"./{aa_fe_srcpath}:/app"]
+            }
+            ds['services']['aafrontend'] = fs
 
 
         '''
@@ -277,13 +306,13 @@ class CloudBuilder:
         stemp = SPANDX_TEMPLATE
 
         if self.args.frontend_path:
-            stemp = stemp.replace("FRONTEND", 'https://frontend:8002')
+            stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
         elif self.args.frontend_hash:
-            stemp = stemp.replace("FRONTEND", 'https://frontend:8002')
+            stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
         elif self.args.frontend_address:
             stemp = stemp.replace("FRONTEND", self.args.frontend_address)
         else:
-            stemp = stemp.replace("FRONTEND", self.frontend)
+            stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
 
         if self.args.backend_path:
             stemp = stemp.replace("BACKEND", 'https://backend:443')
@@ -296,6 +325,21 @@ class CloudBuilder:
 
         with open(os.path.join(self.webroot, 'spandx.config.js'), 'w') as f:
             f.write(stemp)
+
+    def make_aa_frontend(self):
+        git_url = 'https://github.com/RedhatInsights/tower-analytics-frontend'
+        srcpath = os.path.join(self.checkouts_root, 'tower-analytics-frontend')
+        if not os.path.exists(srcpath):
+            cmd = f'git clone {git_url} {srcpath}'
+            subprocess.run(cmd, shell=True)
+
+        # pre-install packages ...
+        node_modules = os.path.join(srcpath, 'node_modules')
+        if not os.path.exists(node_modules):
+            cmd = [self.get_npm_path(), 'install']
+            print(cmd)
+            subprocess.run(cmd, cwd=srcpath)
+        #import epdb; epdb.st()
 
     def make_www(self):
         apps_path = os.path.join(self.webroot, 'apps')
@@ -496,6 +540,7 @@ def main():
 
     cbuilder = CloudBuilder(args=args)
 
+    '''
     #cbuilder.set_chrome_jwt_constants()
     cbuilder.make_chrome(build=not args.skip_chrome_build, reset=not args.skip_chrome_reset)
     #cbuilder.fix_chrome()
@@ -506,6 +551,7 @@ def main():
 
     cbuilder.make_spandx()
     cbuilder.create_compose_file()
+    '''
 
 
 if __name__ == "__main__":

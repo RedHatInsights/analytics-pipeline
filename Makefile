@@ -11,8 +11,8 @@ keycloak:
 
 stack:
 	python3 tool.py
-	docker-compose -f genstack.yml up --force-recreate
+	docker-compose -f genstack.yml up -V --force-recreate --always-recreate-deps --attach-dependencies
 
 stack_no_reset:
 	python3 tool.py --skip_chrome_reset
-	docker-compose -f genstack.yml up --force-recreate
+	docker-compose -f genstack.yml up -V --force-recreate --always-recreate-deps --attach-dependencies

@@ -117,6 +117,14 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'Skey12345'
 
 
+@app.before_first_request
+def create_initial_user():
+    try:
+        KH.create_realm_user(REALM, 'bob', 'redhat1234', 'bob', 'barker', 'bob@redhat.com', 1111, 1)
+    except Exception as e:
+        print(e)
+
+
 @app.route('/')
 def root():
     return render_template_string(USER_PAGE_TEMPLATE, rusers=KH.get_all_users())

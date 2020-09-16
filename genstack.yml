@@ -33,7 +33,7 @@ services:
             - ./keycloak_admin_fe:/app
         depends_on:
             - sso.local.redhat.com
-        command: /bin/bash -c "cd /app && pip install -r requirements.txt && flask run --host=0.0.0.0 --port=80"
+        command: /bin/bash -c "cd /app && pip install -r requirements.txt && python -c 'from kchelper import init_realm; init_realm()' && flask run --host=0.0.0.0 --port=80"
     insights_proxy:
         container_name: insights_proxy
         image: redhatinsights/insights-proxy
@@ -107,8 +107,8 @@ services:
             context: src/rbac
         volumes:
             - ./src/rbac:/app
-    frontend:
-        container_name: frontend
+    aafrontend:
+        container_name: aafrontend
         image: node:10.22.0
         user: node
         ports:
@@ -117,4 +117,4 @@ services:
             DEBUG: '*:*'
         command: /bin/bash -c "cd /app && npm install && npm run start:container"
         volumes:
-            - /home/vagrant/tower-analytics-frontend:/app
+            - ./src/tower-analytics-frontend:/app
