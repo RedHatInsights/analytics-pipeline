@@ -88,6 +88,8 @@ automation-analytics:
       - id: clusters
         title: Clusters
         default: true
+      - id: job-explorer
+        title: Job Explorer
       - id: organization-statistics
         title: Organization Statistics
       - id: automation-calculator
