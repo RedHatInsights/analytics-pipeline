@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 
+import yaml
 import ruamel.yaml
 from ruamel.yaml import YAML
 
@@ -129,30 +130,20 @@ class CloudBuilder:
         self.make_aa_backend()
 
         #cbuilder.set_chrome_jwt_constants()
-        self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
+        #self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
         #cbuilder.fix_chrome()
         self.make_www()
         self.make_landing()
         self.make_entitlements()
         self.make_rbac()
 
+        self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
+
         self.make_spandx()
         self.create_compose_file()
 
 
     def create_compose_file(self):
-        '''
-        networks:
-          testnet:
-            ipam:
-              config:
-                - subnet: 172.23.0.0/24
-        networks:
-            testnet:
-               ipv4_address: 172.23.0.3
-
-        '''
-
         ds = {
             'version': '3',
             'networks': {
@@ -171,6 +162,7 @@ class CloudBuilder:
                         'POSTGRES_USER': 'keycloak',
                         'POSTGRES_PASSWORD': 'keycloak',
                     },
+                    #'ports': ['25432:5432'],
                     'networks': {
                         'ssonet': {
                             'ipv4_address': '172.23.0.2'
@@ -326,8 +318,12 @@ class CloudBuilder:
                 'command': '/bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"'
             }
             ds['services']['aabackend'] = bs
+        elif self.args.backend_address:
+            pass
         else:
-            raise Exception('real backend not yet implemented!')
+            svcs = self.get_backend_compose_services()
+            ds['services'].update(svcs)
+            #import epdb; epdb.st()
 
 
         '''
@@ -372,15 +368,16 @@ class CloudBuilder:
             stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
 
         if self.args.backend_path:
-            stemp = stemp.replace("BACKEND", 'https://aabackend:443')
+            stemp = stemp.replace("BACKEND", 'http://fastapi:8080')
         elif self.args.backend_hash:
-            stemp = stemp.replace("BACKEND", 'https://aabackend:443')
+            stemp = stemp.replace("BACKEND", 'https://fastapi:8080')
         elif self.args.backend_mock:
             stemp = stemp.replace("BACKEND", 'https://aabackend:443')
         elif self.args.backend_address:
             stemp = stemp.replace("BACKEND", self.args.backend_address)
         else:
-            stemp = stemp.replace("BACKEND", self.backend)
+            # assume building the real deal? ...
+            stemp = stemp.replace("BACKEND", 'http://fastapi:8080')
 
         with open(os.path.join(self.webroot, 'spandx.config.js'), 'w') as f:
             f.write(stemp)
@@ -391,7 +388,8 @@ class CloudBuilder:
         if not os.path.exists(srcpath):
             cmd = f'git clone {git_url} {srcpath}'
             res = subprocess.run(cmd, shell=True)
-            import epdb; epdb.st()
+            if res.returncode != 0:
+                raise Exception(f'cloning {git_url} failed')
 
         # pre-install packages ...
         node_modules = os.path.join(srcpath, 'node_modules')
@@ -399,12 +397,48 @@ class CloudBuilder:
             cmd = [self.get_npm_path(), 'install']
             print(cmd)
             res = subprocess.run(cmd, cwd=srcpath)
-            import epdb; epdb.st()
-        #import epdb; epdb.st()
+            if res.returncode != 0:
+                raise Exception(f'npm install failed')
 
     def make_aa_backend(self):
+        if self.args.backend_hash:
+            raise Exception('backend hash not yet implemented')
+        if self.args.backend_path:
+            raise Exception('backend path not yet implemented')
+        if self.args.backend_address:
+            return
+
+        git_url = 'git@github.com:RedhatInsights/tower-analytics-backend'
+        srcpath = os.path.join(self.checkouts_root, 'tower-analytics-backend')
+
+        if not os.path.exists(srcpath):
+            cmd = f'git clone {git_url} {srcpath}'
+            res = subprocess.run(cmd, shell=True)
+            if res.returncode != 0:
+                raise Exception(f'cloning {git_url} failed')
+
+    def get_backend_compose_services(self):
+        srcpath = os.path.join(self.checkouts_root, 'tower-analytics-backend')
+        compose_file = os.path.join(srcpath, 'local.yml')
+        with open(compose_file, 'r') as f:
+            ytxt = f.read()
+        ydata = yaml.load(ytxt)
+        svcs = {}
+        svcs['fastapi'] = ydata['services']['fastapi']
+        svcs['postgres'] = ydata['services']['postgres']
+
+        for k,v in svcs.items():
+            svcs[k]['build']['context'] = './' + srcpath
+            svcs[k]['container_name'] = k
+            for idv,volume in enumerate(v.get('volumes', [])):
+                svcs[k]['volumes'][idv] = './' + srcpath + '/' + volume.lstrip('./')
+            for ide,envfile in enumerate(v.get('env_file', [])):
+                print(envfile)
+                svcs[k]['env_file'][ide] = './' + srcpath + '/' + envfile.replace('./', '')
+            #import epdb; epdb.st()
+
         #import epdb; epdb.st()
-        pass
+        return svcs
 
     def make_www(self):
         apps_path = os.path.join(self.webroot, 'apps')
@@ -425,10 +459,12 @@ class CloudBuilder:
         if not os.path.exists(os.path.join(self.webroot, 'index.html')):
             cmd = 'curl -o index.html https://cloud.redhat.com'
             res = subprocess.run(cmd, cwd=self.webroot, shell=True)
-            import epdb; epdb.st()
+            if res.returncode != 0:
+                raise Exception(f'curl failed')
             cmd = 'sed -i.bak "s/chrome\..*\.css/chrome\.css/" index.html && rm -f index.html.bak'
             res = subprocess.run(cmd, cwd=self.webroot, shell=True)
-            import epdb; epdb.st()
+            if res.returncode != 0:
+                raise Exception(f'sed failed')
 
         # symlink the silent-check-sso.html
         ssof = os.path.join(self.checkouts_root, 'landing-page-frontend', 'dist', 'silent-check-sso.html')

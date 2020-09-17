@@ -6,7 +6,7 @@ module.exports = {
         '/apps/automation-analytics': { host: `https://aafrontend:8002` },
         '/ansible/automation-analytics': { host: `https://aafrontend:8002` },
         '/beta/ansible/automation-analytics': { host: `https://aafrontend:8002` },
-        '/api/tower-analytics': { host: `https://aabackend:443` },
+        '/api/tower-analytics': { host: `http://fastapi:8080` },
         '/apps/chrome': { host: `http://chrome` },
         '/apps/landing': { host: `http://landing` },
         '/beta/apps/landing': { host: `http://landing_beta` },

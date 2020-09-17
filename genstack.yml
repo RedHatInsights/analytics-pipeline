@@ -134,13 +134,39 @@ services:
         command: /bin/bash -c "cd /app && npm install && npm run start:container"
         volumes:
             - ./srv/tower-analytics-frontend:/app
-    aabackend:
-        container_name: aabackend
-        image: python:3
+    fastapi:
         build:
-            context: ./srv/aa_backend_mock
-        environment:
-            API_SECURE: '1'
+            context: ./srv/tower-analytics-backend
+            dockerfile: ./Dockerfile
+            args:
+                SRC_MOUNT: /app
+        image: tower_analytics_backend
+        depends_on:
+            - postgres
         volumes:
-            - ./srv/aa_backend_mock:/app
-        command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
+            - ./srv/tower-analytics-backend/:/app
+        env_file:
+            - ./srv/tower-analytics-backend/.envs/.local/.django
+            - ./srv/tower-analytics-backend/.envs/.local/.postgres
+        ports:
+            - 8004:8080
+        command: ./launcher
+        environment:
+            - ALLOW_DIRECT_BUNDLE_UPLOADS=yes
+            - DEBUG=true
+            - APP=fastapi
+            - DEV=1
+        container_name: fastapi
+    postgres:
+        build:
+            context: ./srv/tower-analytics-backend
+            dockerfile: ./compose/local/postgres/Dockerfile
+        ports:
+            - 15432:5432
+        image: tower_analytics_backend_production_postgres
+        volumes:
+            - ./srv/tower-analytics-backend/local_postgres_data:/var/lib/postgresql/data
+            - ./srv/tower-analytics-backend/local_postgres_data_backups:/backups
+        env_file:
+            - ./srv/tower-analytics-backend/.envs/.local/.postgres
+        container_name: postgres

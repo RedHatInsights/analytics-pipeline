@@ -8,4 +8,4 @@ srv/insights-chrome/
 srv/landing-page-frontend/
 srv/rbac/
 srv/tower-analytics-frontend/
-
+srv/tower-analytics-backend/
