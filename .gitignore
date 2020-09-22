@@ -3,7 +3,6 @@ src/*
 venv
 __pycache__
 
-srv/entitlements/
 srv/insights-chrome/
 srv/landing-page-frontend/
 srv/rbac/
