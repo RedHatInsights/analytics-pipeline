@@ -3,7 +3,12 @@ SHELL := /bin/bash
 DOCKER_OPTS = -V --force-recreate --always-recreate-deps --attach-dependencies --abort-on-container-exit
 
 clean:
-	sudo rm -rf srv/tower-analytics-backend/local_postgres_data
+	docker-compose -f genstack.yml down
+	docker-compose -f genstack.yml rm -f
+	docker volume prune -f
+	docker volume ls | fgrep _local_ | awk '{print $2}' | xargs -I {} docker volume rm -f {}
+	sudo rm -rf srv/tower-analytics-backend/local_*_data
+	sudo rm -rf srv/tower-analytics-backend/local_*_data_backups
 
 stack: clean
 	python3 tool.py

@@ -153,6 +153,12 @@ class CloudBuilder:
                     }
                 }
             },
+            'volumes': {
+                'local_postgres_data': {},
+                'local_postgres_data_backups': {},
+                'local_zookeeper_data': {},
+                'local_kafka_data': {}
+            },
             'services': {
                 'kcpostgres': {
                     'container_name': 'kcpostgres',
@@ -426,12 +432,18 @@ class CloudBuilder:
         svcs = {}
         svcs['fastapi'] = ydata['services']['fastapi']
         svcs['postgres'] = ydata['services']['postgres']
+        svcs['kafka'] = ydata['services']['kafka']
+        svcs['zookeeper'] = ydata['services']['zookeeper']
+        svcs['refresher'] = ydata['services']['refresher']
+        svcs['rollups_processor'] = ydata['services']['rollups_processor']
 
         for k,v in svcs.items():
-            svcs[k]['build']['context'] = './' + srcpath
+            if 'build' in v:
+                svcs[k]['build']['context'] = './' + srcpath
             svcs[k]['container_name'] = k
-            for idv,volume in enumerate(v.get('volumes', [])):
-                svcs[k]['volumes'][idv] = './' + srcpath + '/' + volume.lstrip('./')
+            if k not in ['zookeeper', 'kafka']:
+                for idv,volume in enumerate(v.get('volumes', [])):
+                    svcs[k]['volumes'][idv] = './' + srcpath + '/' + volume.lstrip('./')
             for ide,envfile in enumerate(v.get('env_file', [])):
                 print(envfile)
                 svcs[k]['env_file'][ide] = './' + srcpath + '/' + envfile.replace('./', '')

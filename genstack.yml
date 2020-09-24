@@ -5,6 +5,11 @@ networks:
         ipam:
             config:
                 - subnet: 172.23.0.0/24
+volumes:
+    local_postgres_data: {}
+    local_postgres_data_backups: {}
+    local_zookeeper_data: {}
+    local_kafka_data: {}
 services:
     kcpostgres:
         container_name: kcpostgres
@@ -170,3 +175,53 @@ services:
         env_file:
             - ./srv/tower-analytics-backend/.envs/.local/.postgres
         container_name: postgres
+    kafka:
+        image: bitnami/kafka:2
+        ports:
+            - 9092:9092
+        volumes:
+            - local_kafka_data:/bitnami
+        environment:
+            - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+            - ALLOW_PLAINTEXT_LISTENER=yes
+            - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+        depends_on:
+            - zookeeper
+        container_name: kafka
+    zookeeper:
+        image: bitnami/zookeeper:3
+        ports:
+            - 2181:2181
+        volumes:
+            - local_zookeeper_data:/bitnami
+        environment:
+            - ALLOW_ANONYMOUS_LOGIN=yes
+        container_name: zookeeper
+    refresher:
+        image: tower_analytics_backend
+        depends_on:
+            - postgres
+        volumes:
+            - ./srv/tower-analytics-backend/:/app
+        env_file:
+            - ./srv/tower-analytics-backend/.envs/.local/.django
+            - ./srv/tower-analytics-backend/.envs/.local/.postgres
+        command: ./launcher
+        environment:
+            - APP=refresher
+        container_name: refresher
+    rollups_processor:
+        image: tower_analytics_backend
+        depends_on:
+            - postgres
+            - kafka
+        volumes:
+            - ./srv/tower-analytics-backend/:/app
+        env_file:
+            - ./srv/tower-analytics-backend/.envs/.local/.django
+            - ./srv/tower-analytics-backend/.envs/.local/.postgres
+            - ./srv/tower-analytics-backend/.envs/.local/.kafka
+        command: ./launcher
+        environment:
+            - APP=rollups
+        container_name: rollups_processor
