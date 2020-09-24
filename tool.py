@@ -496,20 +496,23 @@ class CloudBuilder:
             cmd = cmd.split()
             print(cmd)
             res = subprocess.run(cmd)
-            import epdb; epdb.st()
+            if res.returncode != 0:
+                raise Exception(f'git clone failed')
 
         nm = os.path.join(srcpath, 'node_modules')
         if not os.path.exists(nm):
             cmd = f'{self.get_npm_path()} install'
             print(cmd)
             res = subprocess.run(cmd, cwd=srcpath, shell=True)
-            import epdb; epdb.st()
+            if res.returncode != 0:
+                raise Exception(f'npm install failed')
 
         if not os.path.exists(os.path.join(srcpath, 'dist')):
             cmd = f'{self.get_npm_path()} run build'
             print(cmd)
             res = subprocess.run(cmd, cwd=srcpath, shell=True)
-            import epdb; epdb.st()
+            if res.returncode != 0:
+                raise Exception(f'npm build failed')
 
     def make_chrome(self, build=False, reset=True, set_jwt=True, fix=True):
 
@@ -524,7 +527,8 @@ class CloudBuilder:
             cmd = cmd.split()
             print(cmd)
             res = subprocess.run(cmd)
-            import epdb; epdb.st()
+            if res.returncode != 0:
+                raise Exception(f'git clone failed')
 
         # reset the source
         if reset:
