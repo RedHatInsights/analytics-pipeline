@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 
 DOCKER_OPTS = -V --force-recreate --always-recreate-deps --attach-dependencies --abort-on-container-exit
+DOCKER_RESTART_OPTS = -V --force-recreate --always-recreate-deps --attach-dependencies
 
 clean:
 	docker-compose -f genstack.yml down
@@ -21,6 +22,10 @@ stack_backend_mock: clean
 stack_no_reset_no_build: clean
 	python3 tool.py --skip_chrome_reset --skip_chrome_build 
 	docker-compose -f genstack.yml up $(DOCKER_OPTS)
+
+stack_allow_restart: clean
+	python3 tool.py
+	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS)
 
 ########################################
 init: migrations data
