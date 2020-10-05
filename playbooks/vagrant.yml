@@ -1,0 +1,8 @@
+- name: setup docker
+  hosts: all
+  connection: local
+  become: True
+  tasks:
+    - include_role:
+        name: geerlingguy.docker
+
