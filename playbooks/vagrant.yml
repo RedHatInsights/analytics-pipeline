@@ -18,6 +18,7 @@
       - 127.0.0.1 stage.foo.redhat.com
       - 127.0.0.1 qa.foo.redhat.com
       - 127.0.0.1 ci.foo.redhat.com
+      - 172.23.0.3 sso.local.redhat.com
   tasks:
     - apt: name=python3-virtualenv
       become: True
