@@ -12,6 +12,12 @@
 - name: misc
   hosts: all
   connection: local
+  vars:
+    hosts_entries:
+      - 127.0.0.1 prod.foo.redhat.com
+      - 127.0.0.1 stage.foo.redhat.com
+      - 127.0.0.1 qa.foo.redhat.com
+      - 127.0.0.1 ci.foo.redhat.com
   tasks:
     - apt: name=python3-virtualenv
       become: True
@@ -30,3 +36,11 @@
     - copy:
         src: .vimrc
         dest: /home/vagrant/.vimrc
+
+    - lineinfile:
+        path: /etc/hosts
+        regexp: "{{ item }}"
+        line: "{{ item }}"
+      loop: "{{ hosts_entries }}"
+      become: True
+

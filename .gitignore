@@ -13,3 +13,4 @@ srv/awx
 playbooks/roles/geerling*
 
 .vagrant
+ssh.config
