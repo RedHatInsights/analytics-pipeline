@@ -5,6 +5,10 @@ Vagrant.configure("2") do |config|
 
   config.vm.box = "generic/ubuntu2004"
 
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.cpus = 4
+    libvirt.memory = 4000
+  end
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
@@ -32,7 +36,7 @@ Vagrant.configure("2") do |config|
   # argument is a set of non-required options.
   # config.vm.synced_folder "../data", "/vagrant_data"
   #config.vm.synced_folder ".", "/vagrant", type: "nfs"
-  config.vm.synced_folder ".", "/vagrant", type: "nfs", nfs_udp: false
+  config.vm.synced_folder ".", "/vagrant", type: "nfs", nfs_udp: false, :linux__nfs_options => ["rw,no_subtree_check,no_root_squash"]
 
   # Enable provisioning with a shell script. Additional provisioners such as
   # Ansible, Chef, Docker, Puppet and Salt are also available. Please see the

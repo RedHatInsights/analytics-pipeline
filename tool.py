@@ -358,7 +358,9 @@ class CloudBuilder:
 
     def get_npm_path(self):
         # /home/vagrant/.nvm/versions/node/v10.15.3/bin/npm
-        npath = os.path.expanduser('~/.nvm/versions/node/v10.15.3/bin/npm')
+        #npath = os.path.expanduser('~/.nvm/versions/node/v10.15.3/bin/npm')
+        res = subprocess.run('which npm', shell=True, stdout=subprocess.PIPE)
+        npath = res.stdout.decode('utf-8').strip()
         return npath
 
     def make_spandx(self):

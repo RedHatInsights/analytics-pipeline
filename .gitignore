@@ -10,4 +10,6 @@ srv/tower-analytics-frontend/
 srv/tower-analytics-backend/
 srv/awx
 
+playbooks/roles/geerling*
+
 .vagrant

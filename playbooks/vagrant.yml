@@ -2,7 +2,31 @@
   hosts: all
   connection: local
   become: True
+  vars:
+    docker_users:
+      - vagrant
   tasks:
     - include_role:
         name: geerlingguy.docker
 
+- name: misc
+  hosts: all
+  connection: local
+  tasks:
+    - apt: name=python3-virtualenv
+      become: True
+    - apt: name=python-is-python3
+      become: True
+    - apt: name=tmux
+      become: True
+    - apt: name=vim
+      become: True
+    - shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash creates=/home/vagrant/.nvm/nvm-exec
+    - shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash creates=/home/vagrant/.nvm/nvm-exec
+    - shell: nvm install 10 creates=/home/vagrant/.nvm/versions/node
+    - copy:
+        src: .tmux.conf
+        dest: /home/vagrant/.tmux.conf
+    - copy:
+        src: .vimrc
+        dest: /home/vagrant/.vimrc
