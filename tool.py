@@ -23,7 +23,7 @@ module.exports = {
         '/beta/ansible/automation-analytics': { host: `FRONTEND` },
         '/api/tower-analytics': { host: `BACKEND` },
         '/apps/chrome': { host: `http://chrome` },
-        '/apps/landing': { host: `http://landing` },
+        '/apps/landing': { host: `https://landing:8002` },
         '/beta/apps/landing': { host: `http://landing_beta` },
         '/api/entitlements': { host: `http://entitlements` },
         '/api/rbac': { host: `http://rbac` },
@@ -259,11 +259,20 @@ class CloudBuilder:
                     'volumes': [f"./{os.path.join(self.checkouts_root, 'insights-chrome')}:/usr/share/nginx/html"],
                     'command': ['nginx-debug', '-g', 'daemon off;']
                 },
+                #'landing': {
+                #    'container_name': 'landing',
+                #    'image': 'nginx',
+                #    'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend', 'dist')}:/usr/share/nginx/html/apps/landing"],
+                #    'command': ['nginx-debug', '-g', 'daemon off;']
+                #},
                 'landing': {
                     'container_name': 'landing',
-                    'image': 'nginx',
-                    'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend', 'dist')}:/usr/share/nginx/html/apps/landing"],
-                    'command': ['nginx-debug', '-g', 'daemon off;']
+                    'image': 'node:10.22.0',
+                    'environment': {
+                        'DEBUG': 'express:*',
+                    },
+                    'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend')}:/app"],
+                    'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
                 },
                 'landing_beta': {
                     'container_name': 'landing_beta',
@@ -524,6 +533,32 @@ class CloudBuilder:
             res = subprocess.run(cmd)
             if res.returncode != 0:
                 raise Exception(f'git clone failed')
+
+        # add a container start target so it will bind to 0.0.0.0
+        pfile = os.path.join(srcpath, 'package.json')
+        with open(pfile, 'r') as f:
+            pdata = f.read()
+        if 'start:container' not in pdata:
+            plines = pdata.split('\n')
+            pix = None
+            for idx,x in enumerate(plines):
+                if '"start":' in x:
+                    pix = idx
+            nl = plines[pix][:]
+            nl = nl.replace('start', 'start:container')
+            nl = nl.replace('webpack-dev-server', 'webpack-dev-server --host 0.0.0.0 ')
+            plines.insert(pix+1, nl)
+            with open(pfile, 'w') as f:
+                f.write('\n'.join(plines))
+
+        # kill the hashed filenames ...
+        cfile = os.path.join(srcpath, 'config', 'base.webpack.config.js')
+        with open(cfile, 'r') as f:
+            cdata = f.read()
+        if '.[hash]' in cdata:
+            cdata = cdata.replace('.[hash]', '')
+            with open(cfile, 'w') as f:
+                f.write(cdata)
 
         nm = os.path.join(srcpath, 'node_modules')
         if not os.path.exists(nm):

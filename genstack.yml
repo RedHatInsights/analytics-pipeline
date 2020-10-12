@@ -96,13 +96,12 @@ services:
             - daemon off;
     landing:
         container_name: landing
-        image: nginx
+        image: node:10.22.0
+        environment:
+            DEBUG: express:*
         volumes:
-            - ./srv/landing-page-frontend/dist:/usr/share/nginx/html/apps/landing
-        command:
-            - nginx-debug
-            - -g
-            - daemon off;
+            - ./srv/landing-page-frontend:/app
+        command: /bin/bash -c "cd /app && npm install && npm run start:container"
     landing_beta:
         container_name: landing_beta
         image: nginx
@@ -135,93 +134,17 @@ services:
         ports:
             - 8002:8002
         environment:
-            DEBUG: '*:*'
+            DEBUG: express:*
         command: /bin/bash -c "cd /app && npm install && npm run start:container"
         volumes:
-            - ./srv/tower-analytics-frontend:/app
-    fastapi:
+            - ./srv/tower-analytics-frontend:/app:rw
+    aabackend:
+        container_name: aabackend
+        image: python:3
         build:
-            context: ./srv/tower-analytics-backend
-            dockerfile: ./Dockerfile
-            args:
-                SRC_MOUNT: /app
-        image: tower_analytics_backend
-        depends_on:
-            - postgres
-        volumes:
-            - ./srv/tower-analytics-backend/:/app
-        env_file:
-            - ./srv/tower-analytics-backend/.envs/.local/.django
-            - ./srv/tower-analytics-backend/.envs/.local/.postgres
-        ports:
-            - 8004:8080
-        command: ./launcher
+            context: ./srv/aa_backend_mock
         environment:
-            - ALLOW_DIRECT_BUNDLE_UPLOADS=yes
-            - DEBUG=true
-            - APP=fastapi
-            - DEV=1
-        container_name: fastapi
-    postgres:
-        build:
-            context: ./srv/tower-analytics-backend
-            dockerfile: ./compose/local/postgres/Dockerfile
-        ports:
-            - 15432:5432
-        image: tower_analytics_backend_production_postgres
+            API_SECURE: '1'
         volumes:
-            - ./srv/tower-analytics-backend/local_postgres_data:/var/lib/postgresql/data
-            - ./srv/tower-analytics-backend/local_postgres_data_backups:/backups
-        env_file:
-            - ./srv/tower-analytics-backend/.envs/.local/.postgres
-        container_name: postgres
-    kafka:
-        image: bitnami/kafka:2
-        ports:
-            - 9092:9092
-        volumes:
-            - local_kafka_data:/bitnami
-        environment:
-            - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-            - ALLOW_PLAINTEXT_LISTENER=yes
-            - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
-        depends_on:
-            - zookeeper
-        container_name: kafka
-    zookeeper:
-        image: bitnami/zookeeper:3
-        ports:
-            - 2181:2181
-        volumes:
-            - local_zookeeper_data:/bitnami
-        environment:
-            - ALLOW_ANONYMOUS_LOGIN=yes
-        container_name: zookeeper
-    refresher:
-        image: tower_analytics_backend
-        depends_on:
-            - postgres
-        volumes:
-            - ./srv/tower-analytics-backend/:/app
-        env_file:
-            - ./srv/tower-analytics-backend/.envs/.local/.django
-            - ./srv/tower-analytics-backend/.envs/.local/.postgres
-        command: ./launcher
-        environment:
-            - APP=refresher
-        container_name: refresher
-    rollups_processor:
-        image: tower_analytics_backend
-        depends_on:
-            - postgres
-            - kafka
-        volumes:
-            - ./srv/tower-analytics-backend/:/app
-        env_file:
-            - ./srv/tower-analytics-backend/.envs/.local/.django
-            - ./srv/tower-analytics-backend/.envs/.local/.postgres
-            - ./srv/tower-analytics-backend/.envs/.local/.kafka
-        command: ./launcher
-        environment:
-            - APP=rollups
-        container_name: rollups_processor
+            - ./srv/aa_backend_mock:/app
+        command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
