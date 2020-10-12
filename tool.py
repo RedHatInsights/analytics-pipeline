@@ -291,7 +291,7 @@ class CloudBuilder:
                     'user': 'node',
                     'ports': ['8002:8002'],
                     'environment': {
-                        'DEBUG': '*:*',
+                        'DEBUG': 'express:*',
                     },
                     'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
                     'volumes': [f"{os.path.abspath(os.path.expanduser(self.args.frontend_path))}:/app:rw"]
@@ -307,7 +307,7 @@ class CloudBuilder:
                 'user': 'root',
                 'ports': ['8002:8002'],
                 'environment': {
-                    'DEBUG': '*:*',
+                    'DEBUG': 'express:*',
                 },
                 'command': '/bin/bash -c "whoami && id && ls -al / && ls -al /app && cd /app && npm install && npm run start:container"',
                 'volumes': [f"./{aa_fe_srcpath}:/app:rw"]
