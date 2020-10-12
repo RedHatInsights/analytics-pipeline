@@ -132,12 +132,18 @@ class CloudBuilder:
         #cbuilder.set_chrome_jwt_constants()
         #self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
         #cbuilder.fix_chrome()
+
         self.make_www()
-        self.make_landing()
+
+        if not self.args.skip_landing:
+            self.make_landing()
+
         self.make_entitlements()
+
         self.make_rbac()
 
-        self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
+        if not self.args.skip_chrome:
+            self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
 
         self.make_spandx()
         self.create_compose_file()
@@ -680,6 +686,8 @@ def main():
     parser.add_argument('--backend_hash', help="what aa backend hash to use")
     parser.add_argument('--backend_path', help="path to an aa backend checkout")
     parser.add_argument('--backend_mock', action='store_true', help="use the mock backend")
+    parser.add_argument('--skip_chrome', action='store_true')
+    parser.add_argument('--skip_landing', action='store_true')
     parser.add_argument('--skip_chrome_reset', action='store_true')
     parser.add_argument('--skip_chrome_build', action='store_true')
     parser.add_argument('--skip_frontend_install', action='store_true')
