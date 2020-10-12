@@ -409,6 +409,10 @@ class CloudBuilder:
                 raise Exception(f'npm install failed')
 
     def make_aa_backend(self):
+
+        if self.args.backend_mock:
+            return
+
         if self.args.backend_hash:
             raise Exception('backend hash not yet implemented')
         if self.args.backend_path:
