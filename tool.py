@@ -288,7 +288,7 @@ class CloudBuilder:
                         'DEBUG': '*:*',
                     },
                     'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
-                    'volumes': [f"{os.path.abspath(os.path.expanduser(self.args.frontend_path))}:/app"]
+                    'volumes': [f"{os.path.abspath(os.path.expanduser(self.args.frontend_path))}:/app:rw"]
                 }
                 ds['services']['frontend'] = fs
 
