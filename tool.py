@@ -309,7 +309,7 @@ class CloudBuilder:
                 'environment': {
                     'DEBUG': '*:*',
                 },
-                'command': '/bin/bash -c "whoami && id && ls -al / && ls -al /app && cd /app && npm install && npm run start:container"',
+                'command': '/bin/bash -c "whoami && id && ls -al / && ls -al /app && sudo chown -R node:node /app && cd /app && npm install && npm run start:container"',
                 'volumes': [f"./{aa_fe_srcpath}:/app:rw"]
             }
             ds['services']['aafrontend'] = fs
