@@ -21,7 +21,7 @@ stack_backend_mock: clean
 	docker-compose -f genstack.yml up $(DOCKER_OPTS)
 
 stack_ci: clean
-	python3 tool.py --backend_mock --skip_frontend_install
+	python3 tool.py --backend_mock --skip_frontend_install --integration
 	cat genstack.yml
 	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS)
 

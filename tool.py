@@ -360,15 +360,9 @@ class CloudBuilder:
             #import epdb; epdb.st()
 
 
-        '''
-        kctuple = '%s:%s' % ('sso.local.redhat.com', self.keycloak_ip)
-        for k,v in ds['services'].items():
-            #'extra_hosts': ['prod.foo.redhat.com:127.0.0.1'],
-            if 'extra_hosts' not in v:
-                ds['services'][k]['extra_hosts'] = []
-            if kctuple not in ds['services'][k]['extra_hosts']:
-                ds['services'][k]['extra_hosts'].append(kctuple)
-        '''
+        if self.args.integration:
+            ds['services']['integration'] = self.get_integration_compose()
+
 
         yaml = YAML(typ='rt', pure=True)
         yaml.preserve_quotes = True
@@ -383,6 +377,23 @@ class CloudBuilder:
         with open('genstack.yml', 'w') as f:
             yaml.dump(ds, f)
 
+
+    def get_integration_compose(self):
+        srcpath = os.path.join(self.checkouts_root, 'integration_tests')
+        svc = {
+            'container_name': 'integration',
+            'image': 'buildkite/puppeteer',
+            'volumes': [f"./{srcpath}:/app:rw"],
+            'network_mode': 'host',
+            'user': 'node',
+            'cap_add': ['SYS_ADMIN'],
+            'extra_hosts': [
+                'prod.foo.redhat.com:127.0.0.1',
+                'sso.local.redhat.com:172.23.0.3'
+            ],
+            'command': '/bin/bash -c "cd /app && npm install && timeout -s SIGKILL 60s node index.js"',
+        }
+        return svc
 
     def get_npm_path(self):
         # /home/vagrant/.nvm/versions/node/v10.15.3/bin/npm
@@ -739,23 +750,10 @@ def main():
     parser.add_argument('--skip_chrome_reset', action='store_true')
     parser.add_argument('--skip_chrome_build', action='store_true')
     parser.add_argument('--skip_frontend_install', action='store_true')
+    parser.add_argument('--integration', action='store_true')
     args = parser.parse_args()
-    #import epdb; epdb.st()
 
     cbuilder = CloudBuilder(args=args)
-
-    '''
-    #cbuilder.set_chrome_jwt_constants()
-    cbuilder.make_chrome(build=not args.skip_chrome_build, reset=not args.skip_chrome_reset)
-    #cbuilder.fix_chrome()
-    cbuilder.make_www()
-    cbuilder.make_landing()
-    cbuilder.make_entitlements()
-    cbuilder.make_rbac()
-
-    cbuilder.make_spandx()
-    cbuilder.create_compose_file()
-    '''
 
 
 if __name__ == "__main__":
