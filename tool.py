@@ -304,7 +304,7 @@ class CloudBuilder:
                     'DEBUG': '*:*',
                 },
                 'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
-                'volumes': [f"./{aa_fe_srcpath}:/app"]
+                'volumes': [f"./{aa_fe_srcpath}:/app:rw"]
             }
             ds['services']['aafrontend'] = fs
 
@@ -566,7 +566,7 @@ class CloudBuilder:
             #subprocess.run(['ln', '-s', os.path.abspath(nm), 'node_modules'], cwd=srcpath)
         '''
         nm = os.path.join(srcpath, 'node_modules')
-        if not os.path.exists(nm):
+        if not os.path.exists(nm) and build:
             cmd = [self.get_npm_path(), 'install']
             print(cmd)
             res = subprocess.run(cmd, cwd=srcpath)
@@ -576,7 +576,7 @@ class CloudBuilder:
         # build the src
         if os.path.exists(os.path.join(srcpath, 'build')) and build:
             shutil.rmtree(os.path.join(srcpath, 'build'))
-        if not os.path.exists(os.path.join(srcpath, 'build')):
+        if not os.path.exists(os.path.join(srcpath, 'build')) and build:
             res = subprocess.run([self.get_npm_path(), 'run', 'build'], cwd=srcpath)
             if res.returncode != 0:
                 raise Exception('npm build failed')
