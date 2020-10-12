@@ -16,10 +16,6 @@ itsdangerous
 Jinja2
 MarkupSafe
 oauth2client
-pkg-resources
-pyasn1
-pyasn1-modules
-pycparser
 PyYAML
 q
 requests
