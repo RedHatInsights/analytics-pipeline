@@ -400,13 +400,14 @@ class CloudBuilder:
                 raise Exception(f'cloning {git_url} failed')
 
         # pre-install packages ...
-        node_modules = os.path.join(srcpath, 'node_modules')
-        if not os.path.exists(node_modules):
-            cmd = [self.get_npm_path(), 'install']
-            print(cmd)
-            res = subprocess.run(cmd, cwd=srcpath)
-            if res.returncode != 0:
-                raise Exception(f'npm install failed')
+        if not self.args.skip_frontend_install:
+            node_modules = os.path.join(srcpath, 'node_modules')
+            if not os.path.exists(node_modules):
+                cmd = [self.get_npm_path(), 'install']
+                print(cmd)
+                res = subprocess.run(cmd, cwd=srcpath)
+                if res.returncode != 0:
+                    raise Exception(f'npm install failed')
 
     def make_aa_backend(self):
 
@@ -681,6 +682,7 @@ def main():
     parser.add_argument('--backend_mock', action='store_true', help="use the mock backend")
     parser.add_argument('--skip_chrome_reset', action='store_true')
     parser.add_argument('--skip_chrome_build', action='store_true')
+    parser.add_argument('--skip_frontend_install', action='store_true')
     args = parser.parse_args()
     #import epdb; epdb.st()
 
