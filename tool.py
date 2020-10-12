@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import getpass
 import os
 import shutil
 import subprocess
@@ -149,6 +150,18 @@ class CloudBuilder:
         self.create_compose_file()
 
 
+    def get_frontend_container_user(self):
+        '''github actions create bind moundts as root and the node user can't write'''
+
+        # if whoami == runner, we're probably inside a github action container
+        # so we need to use root in order to read/write the bind mount ...
+        un = getpass.getuser()
+        if un == 'runner':
+            return 'root'
+
+        # use "node" by default ...
+        return 'node'
+
     def create_compose_file(self):
         ds = {
             'version': '3',
@@ -288,7 +301,7 @@ class CloudBuilder:
                 fs = {
                     'container_name': 'aafrontend',
                     'image': 'node:10.22.0',
-                    'user': 'node',
+                    'user': self.get_frontend_container_user(),
                     'ports': ['8002:8002'],
                     'environment': {
                         'DEBUG': 'express:*',
@@ -304,12 +317,12 @@ class CloudBuilder:
             fs = {
                 'container_name': 'aafrontend',
                 'image': 'node:10.22.0',
-                'user': 'root',
+                'user': self.get_frontend_container_user(),
                 'ports': ['8002:8002'],
                 'environment': {
                     'DEBUG': 'express:*',
                 },
-                'command': '/bin/bash -c "whoami && id && ls -al / && ls -al /app && cd /app && npm install && npm run start:container"',
+                'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
                 'volumes': [f"./{aa_fe_srcpath}:/app:rw"]
             }
             ds['services']['aafrontend'] = fs
