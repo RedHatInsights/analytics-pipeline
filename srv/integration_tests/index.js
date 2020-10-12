@@ -5,7 +5,7 @@ const height = 1280;
 
 (async () => {
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         ignoreHTTPSErrors: true,
         args: [`--window-size=${width},${height}`]
     });
@@ -71,6 +71,6 @@ const height = 1280;
     }
 
     console.log('DONE!!!!!!!!!!!!');
-    await cloudPage.waitFor(100000);
+    await cloudPage.waitFor(10000);
     await browser.close();
 })();

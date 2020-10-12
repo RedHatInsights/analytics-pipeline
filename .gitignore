@@ -14,3 +14,5 @@ playbooks/roles/geerling*
 
 .vagrant
 ssh.config
+*.png
+*node_modules*
