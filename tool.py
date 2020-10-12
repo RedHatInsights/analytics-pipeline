@@ -304,7 +304,7 @@ class CloudBuilder:
             fs = {
                 'container_name': 'aafrontend',
                 'image': 'node:10.22.0',
-                'user': 'node',
+                'user': 'root',
                 'ports': ['8002:8002'],
                 'environment': {
                     'DEBUG': '*:*',
