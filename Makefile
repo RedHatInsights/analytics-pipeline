@@ -21,9 +21,9 @@ stack_backend_mock: clean
 	docker-compose -f genstack.yml up $(DOCKER_OPTS)
 
 stack_ci: clean
-	python3 tool.py --backend_mock --skip_frontend_install --skip_chrome --skip_landing
+	python3 tool.py --backend_mock --skip_frontend_install
 	cat genstack.yml
-	docker-compose -f genstack.yml up $(DOCKER_OPTS) aafrontend
+	docker-compose -f genstack.yml up $(DOCKER_OPTS)
 
 stack_no_reset_no_build: clean
 	python3 tool.py --skip_chrome_reset --skip_chrome_build 
