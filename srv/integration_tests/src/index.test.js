@@ -74,3 +74,8 @@ const height = 1280;
     await cloudPage.waitFor(10000);
     await browser.close();
 })();
+
+describe("DO STUFF", () => {
+    it("show be cool!", () => {
+    });
+});
