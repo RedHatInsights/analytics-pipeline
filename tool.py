@@ -390,7 +390,8 @@ class CloudBuilder:
             },
             'volumes': [f"./{srcpath}:/app:rw"],
             'network_mode': 'host',
-            'user': 'node',
+            #'user': 'node',
+            'user': getpass.getuser(),
             'cap_add': ['SYS_ADMIN'],
             'extra_hosts': [
                 'prod.foo.redhat.com:127.0.0.1',
