@@ -30,6 +30,8 @@ while true; do
     ((COUNT=COUNT+1))
 
     if [[ $SSO_RC -eq 0 && $KCADMIN_RC -eq 0 && $CHRC_RC -eq 0 ]]; then
+        # wait a bit longer and then exit ...
+        sleep 60
         exit 0
     fi
 
