@@ -382,7 +382,12 @@ class CloudBuilder:
         srcpath = os.path.join(self.checkouts_root, 'integration_tests')
         svc = {
             'container_name': 'integration',
-            'image': 'buildkite/puppeteer',
+            #'image': 'buildkite/puppeteer',
+            'image': 'aa_integration:latest',
+            'build': {
+                'context': './srv/integration_tests',
+                'dockerfile': 'Dockerfile'
+            },
             'volumes': [f"./{srcpath}:/app:rw"],
             'network_mode': 'host',
             'user': 'node',
@@ -391,7 +396,7 @@ class CloudBuilder:
                 'prod.foo.redhat.com:127.0.0.1',
                 'sso.local.redhat.com:172.23.0.3'
             ],
-            'command': '/bin/bash -c "cd /app && npm install && timeout -s SIGKILL 60s node index.js"',
+            'command': '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s ./node_modules/jest/bin/jest.js src/index.test.js"',
         }
         return svc
 
