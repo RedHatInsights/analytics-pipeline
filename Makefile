@@ -5,7 +5,7 @@ DOCKER_OPTS = $(DOCKER_RESTART_OPTS) --abort-on-container-exit
 
 clean:
 	docker-compose -f genstack.yml down || echo "docker-compose down failed"
-	docker-compose -f genstack.yml rm -f || echo "docker-comose rm failed"
+	docker-compose -f genstack.yml rm -f || echo "docker-compose rm failed"
 	docker volume prune -f
 	docker volume ls | fgrep _local_ | awk '{print $2}' | xargs -I {} docker volume rm -f {}
 	if [[ -d srv/tower-analytics-backend ]]; then sudo rm -rf srv/tower-analytics-backend/local_*_data; fi;
