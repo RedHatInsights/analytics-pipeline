@@ -150,14 +150,14 @@ class CloudBuilder:
         self.create_compose_file()
 
 
-    def get_frontend_container_user(self):
+    def get_node_container_user(self):
         '''github actions create bind moundts as root and the node user can't write'''
 
         # if whoami == runner, we're probably inside a github action container
         # so we need to use root in order to read/write the bind mount ...
         un = getpass.getuser()
         if un == 'runner':
-            return 'root'
+            return 'runner'
 
         # use "node" by default ...
         return 'node'
@@ -302,39 +302,7 @@ class CloudBuilder:
             }
         }
 
-        # add frontend if path or hash given
-        if self.args.frontend_path or self.args.frontend_hash:
-            if self.args.frontend_hash:
-                raise Exception('frontend hash not yet implemented!')
-            elif self.args.frontend_path:
-                fs = {
-                    'container_name': 'aafrontend',
-                    'image': 'node:10.22.0',
-                    'user': self.get_frontend_container_user(),
-                    'ports': ['8002:8002'],
-                    'environment': {
-                        'DEBUG': 'express:*',
-                    },
-                    'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
-                    'volumes': [f"{os.path.abspath(os.path.expanduser(self.args.frontend_path))}:/app:rw"]
-                }
-                ds['services']['frontend'] = fs
-
-        else:
-            # build the frontend?
-            aa_fe_srcpath = os.path.join(self.checkouts_root, 'tower-analytics-frontend')
-            fs = {
-                'container_name': 'aafrontend',
-                'image': 'node:10.22.0',
-                'user': self.get_frontend_container_user(),
-                'ports': ['8002:8002'],
-                'environment': {
-                    'DEBUG': 'express:*',
-                },
-                'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
-                'volumes': [f"./{aa_fe_srcpath}:/app:rw"]
-            }
-            ds['services']['aafrontend'] = fs
+        ds['services']['aafrontend'] = self.get_frontend_service()
 
         # build the backend?
         if self.args.backend_mock:
@@ -359,10 +327,8 @@ class CloudBuilder:
             ds['services'].update(svcs)
             #import epdb; epdb.st()
 
-
         if self.args.integration:
             ds['services']['integration'] = self.get_integration_compose()
-
 
         yaml = YAML(typ='rt', pure=True)
         yaml.preserve_quotes = True
@@ -372,11 +338,30 @@ class CloudBuilder:
         yaml.width = 1000
         yaml.default_flow_style = False
 
-        #pprint(ds)
-
         with open('genstack.yml', 'w') as f:
             yaml.dump(ds, f)
 
+
+    def get_frontend_service(self):
+        if self.args.frontend_path or self.args.frontend_hash:
+            if self.args.frontend_hash:
+                raise Exception('frontend hash not yet implemented!')
+            aa_fe_srcpath = os.path.abspath(os.path.expanduser(self.args.frontend_path))
+        else:
+            aa_fe_srcpath = os.path.join(self.checkouts_root, 'tower-analytics-frontend')
+
+        fs = {
+            'container_name': 'aafrontend',
+            'image': 'node:10.22.0',
+            'user': self.get_node_container_user(),
+            'ports': ['8002:8002'],
+            'environment': {
+                'DEBUG': 'express:*',
+            },
+            'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
+            'volumes': [f"./{aa_fe_srcpath}:/app:rw"]
+        }
+        return fs
 
     def get_integration_compose(self):
         srcpath = os.path.join(self.checkouts_root, 'integration_tests')
@@ -391,7 +376,7 @@ class CloudBuilder:
             'volumes': [f"./{srcpath}:/app:rw"],
             'network_mode': 'host',
             #'user': 'node',
-            'user': getpass.getuser(),
+            'user': self.get_node_container_user(),
             'cap_add': ['SYS_ADMIN'],
             'extra_hosts': [
                 'prod.foo.redhat.com:127.0.0.1',
