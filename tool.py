@@ -389,6 +389,7 @@ class CloudBuilder:
                 'prod.foo.redhat.com:127.0.0.1',
                 'sso.local.redhat.com:172.23.0.3'
             ],
+            'depends_on': ['sso.local.redhat.com', 'kcadmin', 'aafrontend', 'aabackend'],
             'command': '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s ./node_modules/jest/bin/jest.js src/index.test.js"',
         }
         return svc
