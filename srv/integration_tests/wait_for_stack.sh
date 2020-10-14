@@ -27,12 +27,14 @@ while true; do
     KCADMIN_RC=$?
     curl -k -v --connect-timeout 2 $CRHC
     CRHC_RC=$?
-    curl -k -v --connect-timeout 2 $CLUSTERS
+    curl -k -v --connect-timeout 2 $CLUSTERS > /tmp/clusters.html
     CLUSTERS_RC=$?
+    fgrep -i 'cannot get /ansible/automation-analytics' /tmp/clusters.html
+    GREP_RC=$?
 
     ((COUNT=COUNT+1))
 
-    if [[ $SSO_RC -eq 0 && $KCADMIN_RC -eq 0 && $CHRC_RC -eq 0 && $CLUSTERS_RC -eq 0 ]]; then
+    if [[ $SSO_RC -eq 0 && $KCADMIN_RC -eq 0 && $CHRC_RC -eq 0 && $CLUSTERS_RC -eq 0  && $GREP_RC -eq 1 ]]; then
         echo "ALL SERVICES ARE AVAILABLE. WAITING 60s ..."
         # wait a bit longer and then exit ...
         sleep 10
