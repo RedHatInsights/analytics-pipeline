@@ -13,6 +13,16 @@ from ruamel.yaml import YAML
 
 from pprint import pprint
 
+
+NODE_RUNNER_DOCKERFILE = '''
+FROM node:10.22
+
+RUN useradd runner
+RUN rm -rf /home/runner
+RUN cp -Rp /home/node /home/runner
+RUN chown -R runner:runner /home/runner
+'''
+
 SPANDX_TEMPLATE = '''/*global module, process*/
 const localhost = (process.env.PLATFORM === 'linux') ? 'localhost' : 'host.docker.internal';
 
@@ -359,7 +369,11 @@ class CloudBuilder:
 
         fs = {
             'container_name': 'aafrontend',
-            'image': 'node:10.22.0',
+            'image': 'noderunner:latest',
+            'build': {
+                'context': f'./{aa_fe_srcpath}',
+                'dockerfile': 'Dockerfile'
+            },
             'user': self.get_node_container_user(),
             'ports': ['8002:8002'],
             'environment': {
@@ -452,6 +466,13 @@ class CloudBuilder:
                 res = subprocess.run(cmd, cwd=srcpath)
                 if res.returncode != 0:
                     raise Exception(f'npm install failed')
+
+        # fixup the dockerfile to add the github actions runner user
+        dfile = os.path.join(srcpath, 'Dockerfile')
+        #with open(dfile, 'r') as f:
+        #    ddata = f.read()
+        with open(dfile, 'w') as f:
+            f.write(NODE_RUNNER_DOCKERFILE)
 
     def make_aa_backend(self):
 

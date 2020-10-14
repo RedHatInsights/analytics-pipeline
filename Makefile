@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
-DOCKER_OPTS = -V --force-recreate --always-recreate-deps --attach-dependencies --abort-on-container-exit
 DOCKER_RESTART_OPTS = -V --force-recreate --always-recreate-deps --attach-dependencies
+DOCKER_OPTS = $(DOCKER_RESTART_OPTS) --abort-on-container-exit
 
 clean:
 	docker-compose -f genstack.yml down || echo "docker-compose down failed"

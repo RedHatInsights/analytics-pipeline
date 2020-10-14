@@ -112,7 +112,10 @@ services:
         command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
     aafrontend:
         container_name: aafrontend
-        image: node:10.22.0
+        image: noderunner:latest
+        build:
+            context: ./srv/tower-analytics-frontend
+            dockerfile: Dockerfile
         user: node
         ports:
             - 8002:8002
