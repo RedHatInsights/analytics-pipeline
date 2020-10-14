@@ -94,23 +94,6 @@ services:
             - nginx-debug
             - -g
             - daemon off;
-    landing:
-        container_name: landing
-        image: node:10.22.0
-        environment:
-            DEBUG: express:*
-        volumes:
-            - ./srv/landing-page-frontend:/app
-        command: /bin/bash -c "cd /app && npm install && npm run start:container"
-    landing_beta:
-        container_name: landing_beta
-        image: nginx
-        volumes:
-            - ./srv/landing-page-frontend/dist:/usr/share/nginx/html/beta/apps/landing
-        command:
-            - nginx-debug
-            - -g
-            - daemon off;
     entitlements:
         container_name: entitlements
         image: python:3

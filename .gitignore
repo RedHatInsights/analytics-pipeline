@@ -9,6 +9,7 @@ srv/rbac/
 srv/tower-analytics-frontend/
 srv/tower-analytics-backend/
 srv/awx
+srv/www/apps/landing
 
 playbooks/roles/geerling*
 

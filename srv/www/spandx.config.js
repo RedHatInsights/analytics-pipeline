@@ -8,8 +8,6 @@ module.exports = {
         '/beta/ansible/automation-analytics': { host: `https://aafrontend:8002` },
         '/api/tower-analytics': { host: `https://aabackend:443` },
         '/apps/chrome': { host: `http://chrome` },
-        '/apps/landing': { host: `https://landing:8002` },
-        '/beta/apps/landing': { host: `http://landing_beta` },
         '/api/entitlements': { host: `http://entitlements` },
         '/api/rbac': { host: `http://rbac` },
         '/beta/config': { host: `http://${localhost}:8889` },

@@ -259,27 +259,6 @@ class CloudBuilder:
                     'volumes': [f"./{os.path.join(self.checkouts_root, 'insights-chrome')}:/usr/share/nginx/html"],
                     'command': ['nginx-debug', '-g', 'daemon off;']
                 },
-                #'landing': {
-                #    'container_name': 'landing',
-                #    'image': 'nginx',
-                #    'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend', 'dist')}:/usr/share/nginx/html/apps/landing"],
-                #    'command': ['nginx-debug', '-g', 'daemon off;']
-                #},
-                'landing': {
-                    'container_name': 'landing',
-                    'image': 'node:10.22.0',
-                    'environment': {
-                        'DEBUG': 'express:*',
-                    },
-                    'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend')}:/app"],
-                    'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
-                },
-                'landing_beta': {
-                    'container_name': 'landing_beta',
-                    'image': 'nginx',
-                    'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend', 'dist')}:/usr/share/nginx/html/beta/apps/landing"],
-                    'command': ['nginx-debug', '-g', 'daemon off;']
-                },
                 'entitlements': {
                     'container_name': 'entitlements',
                     'image': 'python:3',
@@ -303,6 +282,8 @@ class CloudBuilder:
         }
 
         ds['services']['aafrontend'] = self.get_frontend_service()
+        ds['services'].update(self.get_landing_services())
+        #import epdb; epdb.st()
 
         # build the backend?
         if self.args.backend_mock:
@@ -340,6 +321,32 @@ class CloudBuilder:
 
         with open('genstack.yml', 'w') as f:
             yaml.dump(ds, f)
+
+
+    def get_landing_services(self):
+        '''
+        'landing_beta': {
+            'container_name': 'landing_beta',
+            'image': 'nginx',
+            'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend', 'dist')}:/usr/share/nginx/html/beta/apps/landing"],
+            'command': ['nginx-debug', '-g', 'daemon off;']
+        },
+        '''
+
+        svcs = {}
+        if self.args.node_landing:
+            svcs['landing'] = {
+                'container_name': 'landing',
+                'image': 'node:10.22.0',
+                'environment': {
+                    'DEBUG': 'express:*',
+                },
+                'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend')}:/app"],
+                'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
+            }
+            return svcs
+
+        return svcs
 
 
     def get_frontend_service(self):
@@ -416,6 +423,12 @@ class CloudBuilder:
         else:
             # assume building the real deal? ...
             stemp = stemp.replace("BACKEND", 'http://fastapi:8080')
+
+        # landing is being hosted by the www service ...
+        if not self.args.node_landing:
+            stlines = stemp.split('\n')
+            stlines = [x for x in stlines if '/apps/landing' not in x]
+            stemp = '\n'.join(stlines)
 
         with open(os.path.join(self.webroot, 'spandx.config.js'), 'w') as f:
             f.write(stemp)
@@ -562,6 +575,14 @@ class CloudBuilder:
             with open(cfile, 'w') as f:
                 f.write(cdata)
 
+        # kill the /beta prefix ...
+        cfg = os.path.join(srcpath, 'config', 'webpack.common.js')
+        with open(cfg, 'r') as f:
+            cdata = f.read()
+        cdata = cdata.replace('/beta/apps', '/apps')
+        with open(cfg, 'w') as f:
+            f.write(cdata)
+
         nm = os.path.join(srcpath, 'node_modules')
         if not os.path.exists(nm):
             cmd = f'{self.get_npm_path()} install'
@@ -570,12 +591,21 @@ class CloudBuilder:
             if res.returncode != 0:
                 raise Exception(f'npm install failed')
 
-        if not os.path.exists(os.path.join(srcpath, 'dist')):
+        if not os.path.exists(os.path.join(srcpath, 'dist', 'index.html')):
             cmd = f'{self.get_npm_path()} run build'
             print(cmd)
             res = subprocess.run(cmd, cwd=srcpath, shell=True)
             if res.returncode != 0:
                 raise Exception(f'npm build failed')
+
+        # Are we going to run this is a service or are we going to host it with nginx?
+        if not self.args.node_landing:
+
+            www = os.path.join(self.checkouts_root, 'www')
+            apppath = os.path.join(www, 'apps', 'landing')
+            if os.path.exists(apppath):
+                shutil.rmtree(apppath)
+            shutil.copytree(os.path.join(srcpath, 'dist'), apppath)
 
     def make_chrome(self, build=False, reset=True, set_jwt=True, fix=True):
 
@@ -741,6 +771,7 @@ def main():
     parser.add_argument('--skip_chrome_reset', action='store_true')
     parser.add_argument('--skip_chrome_build', action='store_true')
     parser.add_argument('--skip_frontend_install', action='store_true')
+    parser.add_argument('--node_landing', action='store_true')
     parser.add_argument('--integration', action='store_true')
     args = parser.parse_args()
 
