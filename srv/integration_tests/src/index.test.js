@@ -69,7 +69,7 @@ describe("smoketest", () => {
 
         // click the login button ...
         await cloudPage.$eval('[data-ouia-component-id="1"]', el => el.click());
-        await cloudPage.waitFor(1000);
+        await cloudPage.waitForTimeout(1000);
         await cloudPage.screenshot({path: 'screens/4_login_page.png'});
 
         // supply username
@@ -80,7 +80,7 @@ describe("smoketest", () => {
 
         // click login ...
         await cloudPage.$eval('#kc-login', el => el.click());
-        await cloudPage.waitFor(1000);
+        await cloudPage.waitForTimeout(1000);
         await cloudPage.screenshot({path: 'screens/5_after_login.png'});
 
 
@@ -89,7 +89,7 @@ describe("smoketest", () => {
     it("can load the clusters page", async () => {
         console.log('opening clusters/dashboard page ...');
 		await cloudPage.$eval('[href="/ansible/automation-analytics"]', el => el.click());
-		await cloudPage.waitFor(2000);
+		await cloudPage.waitForTimeout(2000);
 		await cloudPage.screenshot({path: 'screens/6_clusters.png'});
     });
 });

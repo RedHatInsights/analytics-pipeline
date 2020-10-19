@@ -4,12 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tests:integration": "jest src/index.test.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "jest": "^26.5.3",
     "puppeteer": "^5.3.1"
+  },
+  "jest": {
+    "verbose": true,
+    "testTimeout": 10000
   }
 }

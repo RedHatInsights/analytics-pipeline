@@ -386,6 +386,9 @@ class CloudBuilder:
 
     def get_integration_compose(self):
         srcpath = os.path.join(self.checkouts_root, 'integration_tests')
+        jestcmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s ./node_modules/jest/bin/jest.js src/index.test.js"'
+        jestcmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s npm run tests:integration"'
+
         svc = {
             'container_name': 'integration',
             #'image': 'buildkite/puppeteer',
@@ -404,7 +407,7 @@ class CloudBuilder:
                 'sso.local.redhat.com:172.23.0.3'
             ],
             'depends_on': ['sso.local.redhat.com', 'kcadmin', 'aafrontend', 'aabackend'],
-            'command': '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s ./node_modules/jest/bin/jest.js src/index.test.js"',
+            'command': jestcmd,
         }
         return svc
 

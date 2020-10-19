@@ -154,4 +154,4 @@ services:
             - kcadmin
             - aafrontend
             - aabackend
-        command: /bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s ./node_modules/jest/bin/jest.js src/index.test.js"
+        command: /bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s npm run tests:integration"
