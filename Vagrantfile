@@ -7,7 +7,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.provider :libvirt do |libvirt|
     libvirt.cpus = 4
-    libvirt.memory = 4000
+    libvirt.memory = 8000
   end
 
   # Create a forwarded port mapping which allows access to a specific port

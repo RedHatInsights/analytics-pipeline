@@ -29,8 +29,7 @@
     - apt: name=vim
       become: True
     - shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash creates=/home/vagrant/.nvm/nvm-exec
-    - shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash creates=/home/vagrant/.nvm/nvm-exec
-    - shell: nvm install 10 creates=/home/vagrant/.nvm/versions/node
+    - shell: /bin/bash -c ". ~/.nvm/nvm.sh && nvm install 10 creates=/home/vagrant/.nvm/versions/node"
     - copy:
         src: .tmux.conf
         dest: /home/vagrant/.tmux.conf
