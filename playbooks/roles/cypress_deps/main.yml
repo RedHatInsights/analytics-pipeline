@@ -1,0 +1,12 @@
+- set_fact:
+    cypress_deps:
+      - xvfb
+      - libxcomposite-dev
+      - libxcursor-dev
+      - libxi-dev
+      - libxtst-dev
+      - libnss3-dev
+      - libatk1.0-dev
+      - libatk-bridge2.0.-dev
+      - libgdk-pixbuf2.0-dev
+      - libgtk-3-dev

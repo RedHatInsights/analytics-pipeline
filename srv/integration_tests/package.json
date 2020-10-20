@@ -16,5 +16,8 @@
   "jest": {
     "verbose": true,
     "testTimeout": 10000
+  },
+  "devDependencies": {
+    "cypress": "^5.4.0"
   }
 }
