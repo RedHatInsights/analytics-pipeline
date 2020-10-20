@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "tests:integration": "jest src/index.test.js"
+    "tests:integration:puppeteer": "jest src.puppeteer/index.test.js"
   },
   "author": "",
   "license": "ISC",

@@ -386,8 +386,8 @@ class CloudBuilder:
 
     def get_integration_compose(self):
         srcpath = os.path.join(self.checkouts_root, 'integration_tests')
-        jestcmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s ./node_modules/jest/bin/jest.js src/index.test.js"'
-        jestcmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s npm run tests:integration"'
+        #jestcmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s ./node_modules/jest/bin/jest.js src/index.test.js"'
+        jestcmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s npm run tests:integration:puppeteer"'
 
         svc = {
             'container_name': 'integration',
