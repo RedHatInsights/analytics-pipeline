@@ -217,7 +217,8 @@ class CloudBuilder:
                         'KEYCLOAK_USER': 'admin',
                         'KEYCLOAK_PASSWORD': 'password',
                     },
-                    'ports': ['8443:8443'],
+                    #'ports': ['8443:8443'],
+                    'expose': [8443],
                     'depends_on': ['kcpostgres'],
                     'networks': {
                         'ssonet': {
