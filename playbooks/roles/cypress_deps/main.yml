@@ -10,6 +10,9 @@
       - libatk-bridge2.0.-dev
       - libgdk-pixbuf2.0-dev
       - libgtk-3-dev
+      - chromium-browser
+      - tigervnc-standalone-server
+      - xfce4
 
 - apt:
     name: "{{ cypress_deps }}"
