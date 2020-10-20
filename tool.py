@@ -246,10 +246,14 @@ class CloudBuilder:
                 'insights_proxy': {
                     'container_name': 'insights_proxy',
                     'image': 'redhatinsights/insights-proxy',
-                    'ports': ['1337:1337'],
+                    #'ports': ['1337:1337'],
+                    'ports': ['8443:8443'],
                     'environment': ['PLATFORM=linux', 'CUSTOM_CONF=true'],
                     'security_opt': ['label=disable'],
                     'extra_hosts': ['prod.foo.redhat.com:127.0.0.1'],
+                    'environment': {
+                        'SPANDX_PORT': 8443
+                    },
                     'volumes': [f'./{os.path.join(self.checkouts_root, "www", "spandx.config.js")}:/config/spandx.config.js']
                 },
                 'webroot': {

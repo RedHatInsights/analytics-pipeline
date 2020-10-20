@@ -135,9 +135,9 @@ class KeyCloakHelper:
                 'enabled': True,
                 'bearerOnly': False,
                 'publicClient': True,
-                'rootUrl': 'https://prod.foo.redhat.com:1337',
-                'baseUrl': 'https://prod.foo.redhat.com:1337',
-                'redirectUris': ['https://prod.foo.redhat.com:1337/*'],
+                'rootUrl': 'https://prod.foo.redhat.com:8443',
+                'baseUrl': 'https://prod.foo.redhat.com:8443',
+                'redirectUris': ['https://prod.foo.redhat.com:8443/*'],
                 'protocolMappers': protocol_mappers
             })
 
