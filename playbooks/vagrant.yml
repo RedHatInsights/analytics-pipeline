@@ -8,6 +8,8 @@
   tasks:
     - include_role:
         name: geerlingguy.docker
+    - include_role:
+        name: cypress_deps
 
 - name: misc
   hosts: all

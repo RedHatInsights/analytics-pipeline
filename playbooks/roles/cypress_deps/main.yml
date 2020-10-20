@@ -10,3 +10,7 @@
       - libatk-bridge2.0.-dev
       - libgdk-pixbuf2.0-dev
       - libgtk-3-dev
+
+- apt:
+    name: "{{ cypress_deps }}"
+    state: present
