@@ -112,6 +112,36 @@ def api_aa_notificaitons():
     return jsonify(data)
 
 
+# https://prod.foo.redhat.com:8443/ansible/automation-analytics/job-explorer?attributes[]=id&attributes[]=status&attributes[]=job_type&attributes[]=started&attributes[]=finished&attributes[]=elapsed&attributes[]=created&attributes[]=cluster_name&attributes[]=org_name&attributes[]=most_failed_tasks&limit=5&job_type[]=workflowjob&job_type[]=job&status[]=successful&status[]=failed&sort_by=created%3Adesc&only_root_workflows_and_standalone_jobs=false&quick_date_range=last_30_days
+@app.route('/api/tower-analytics/v1/job_explorer/', methods=['GET', 'POST'])
+def je():
+    with open('api_payloads/job_explorer_result.json', 'r') as f:
+        data = json.loads(f.read())
+    return jsonify(data)
+
+'''
+{
+	"attributes": [
+		"id",
+		"status",
+		"job_type",
+		"started",
+		"finished",
+		"elapsed",
+		"created",
+		"cluster_name",
+		"org_name",
+		"most_failed_tasks"
+	]
+}
+'''
+@app.route('/api/tower-analytics/v1/job_explorer_options/', methods=['GET', 'POST'])
+def je_options():
+    with open('api_payloads/job_explorer_options_result.json', 'r') as f:
+        data = json.loads(f.read())
+    return jsonify(data)
+
+
 if __name__ == '__main__':
     #app.run(ssl_context='adhoc', host='0.0.0.0', port=443, debug=True)
     #server = Server(('0.0.0.0', 443), app.wsgi_app)
