@@ -11,8 +11,8 @@ fi
 
 SSO="https://sso.local.redhat.com:8443"
 KCADMIN="http://172.23.0.4"
-CRHC="https://prod.foo.redhat.com:1337"
-CLUSTERS="https://prod.foo.redhat.com:1337/ansible/automation-analytics/clusters"
+CRHC="https://prod.foo.redhat.com:8443"
+CLUSTERS="https://prod.foo.redhat.com:8443/ansible/automation-analytics/clusters"
 
 COUNT=0
 MAXCOUNT=100
