@@ -1,21 +1,58 @@
-/*
-describe('SSO self-signed cert smoketest', () => {
-  it('Visits SSO without cert errors', () => {
-    cy.visit('https://sso.local.redhat.com:8443')
-  })
-})
-*/
-
 const baseUrl = 'https://prod.foo.redhat.com:8443';
-//const loginUrl = "https://sso.local.redhat.com:8443/auth/realms/redhat-external/protocol/openid-connect/auth?client_id=cloud-services&redirect_uri=https%3A%2F%2Fprod.foo.redhat.com%3A8443%2F&response_mode=fragment&response_type=code&scope=openid"
+const appid = '#automation-analytics-application';
+
+
+function hasInnerHrefs() {
+    let hasHrefs = true;
+    cy.get('#automation-analytics-application')
+        .find('a', {timeout: 100})
+        .catch((err) => {
+            hasHrefs = false;
+        });
+
+    return hasHrefs;
+}
+
+function hasInnerButtons() {
+    return false;
+}
+
+async function fuzzClustersPage() {
+
+    await cy.get(appid)
+        .find('a')
+        .first()
+        .click({waitForAnimations: true})
+        .wait(1000)
+        .then(() => {
+            cy.screenshot('top-template-modal-first.png', {capture: 'fullPage'});
+            cy.get('button[aria-label="Close"]')
+                .click()
+                .wait(1000);
+        })
+
+    await cy.get(appid)
+        .find('a')
+        .last()
+        .click({waitForAnimations: true})
+        .wait(1000)
+        .then(() => {
+            cy.screenshot('top-template-modal-last.png', {capture: 'fullPage'});
+            cy.get('button[aria-label="Close"]')
+                .click()
+                .wait(1000);
+        })
+
+}
+
 beforeEach(() => {
-    cy.viewport(1280, 1024);
+    // open the cloud landing page ...
+    cy.viewport(1600, 2000);
     cy.visit(baseUrl);
+
+    // sso login ...
     cy.get('[data-ouia-component-id="1"]').click();
     cy.wait(1000);
-
-    //cy.visit(loginUrl)
-
     cy.get('#username').type('bob');
     cy.get('#password').type('redhat1234');
     cy.get('#kc-login').click();
@@ -24,6 +61,7 @@ beforeEach(() => {
 
 describe('automation analytics smoketests', () => {
 
+    /*
     xit('can open the crhc landing page', () => {
         cy.visit(baseUrl);
         cy.wait(1000);
@@ -49,6 +87,7 @@ describe('automation analytics smoketests', () => {
         console.log(navlis);
         navlis.should('have.length', 5)
     })
+    */
 
     it('can open all the AA navigation items', () => {
         cy.visit(baseUrl);
@@ -58,59 +97,28 @@ describe('automation analytics smoketests', () => {
 
         let navurls = [];
 
-        // pf-c-nav__list
-        // li ouiaid=automation-analytics
-
-            /*
-            console.log(href[0]);
-            console.log(href[0].pathname);
-
-            href[0].click();
-            cy.wait(5000);
-
-            cy.location().should((loc) => {
-                expect(loc.pathname).to.eq(href[0].pathname);
-            })
-            */
-
-        cy.get('li[ouiaid="automation-analytics"] > section > ul > li > a').each((href, hid) => {
+        cy.get('li[ouiaid="automation-analytics"] > section > ul > li > a').first().each((href, hid) => {
             console.log('href', hid, href[0].pathname);
             navurls.push(href[0].pathname);
             console.log(navurls);
 
-            /*
-            href[0].then((link) => {
-                link.click();
-                cy.wait(5000);
-            });
-            */
-
-            /*
-            cy.route(href[0].pathname).as('thisurl')
-            href[0].click();
-            //cy.wait(5000);
-            cy.wait(['@thisurl'], { timeout: 15000 }).then(xhr => {
-                console.log('xhr', xhr);
-            });
-            */
-
             cy.visit(baseUrl + href[0].pathname);
-            cy.wait(5000);
+            cy.wait(1000);
+            const screenshotFilename = hid.toString() + '.png';
+            cy.screenshot(screenshotFilename);
 
+            /*
+            if ( hasInnerHrefs() ) {
+                console.log('HREFS!');
+            }
+            */
+
+            if ( href[0].pathname === '/ansible/automation-analytics/clusters' ) { 
+                fuzzClustersPage();
+            }
+
+            //throw 'first page visited ...';
         });
-
-        /*
-        console.log('navurls', navurls);
-
-        navurls.forEach((url, ix) => {
-            console.log(url);
-            cy.visit(baseUrl + url);
-            cy.wait(5000);
-
-        });
-
-        expect(navurls.length).to.eq(5);
-        */
 
     })
 
