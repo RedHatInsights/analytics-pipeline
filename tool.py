@@ -394,7 +394,7 @@ class CloudBuilder:
         def pick_dockerfile():
             if self.args.puppeteer:
                 return 'Dockerfile.puppeteer'
-            if self.args.cypress:
+            if self.args.cypress or self.args.cypress_debug:
                 return 'Dockerfile.cypress'
             return 'Dockerfile'
 
