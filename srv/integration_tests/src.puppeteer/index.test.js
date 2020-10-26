@@ -44,7 +44,7 @@ describe("smoketest", () => {
             width: width,
             height: height
         });
-        await cloudPage.goto('https://prod.foo.redhat.com:1337', {"waitUntil" : "networkidle2"});
+        await cloudPage.goto('https://prod.foo.redhat.com:8443', {"waitUntil" : "networkidle2"});
         await cloudPage.screenshot({path: 'screens/2_cloud_landing.png'});
 
 

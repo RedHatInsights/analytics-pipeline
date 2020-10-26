@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "tests:integration:puppeteer": "jest src.puppeteer/index.test.js",
-    "tests:integration:cypress": "cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"
+    "tests:integration:cypress": "npm install cypress && ./node_modules/.bin/cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js",
+    "tests:integration:cypress-debug": "npm install cypress && DEBUG=cypress:* ./node_modules/.bin/cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"
   },
   "author": "",
   "license": "ISC",

@@ -390,9 +390,23 @@ class CloudBuilder:
         return fs
 
     def get_integration_compose(self):
+
+        def pick_dockerfile():
+            if self.args.puppeteer:
+                return 'Dockerfile.puppeteer'
+            if self.args.cypress:
+                return 'Dockerfile.cypress'
+            return 'Dockerfile'
+
         srcpath = os.path.join(self.checkouts_root, 'integration_tests')
         #jestcmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s ./node_modules/jest/bin/jest.js src/index.test.js"'
-        jestcmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s npm run tests:integration:puppeteer"'
+        basecmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s '
+        if self.args.puppeteer:
+            testcmd = basecmd + 'npm run tests:integration:puppeteer"'
+        elif self.args.cypress:
+            testcmd = basecmd + 'npm run tests:integration:cypress"'
+        else:
+            testcmd = basecmd + './node_modules/jest/bin/jest.js src/index.test.js"'
 
         svc = {
             'container_name': 'integration',
@@ -400,7 +414,7 @@ class CloudBuilder:
             'image': 'aa_integration:latest',
             'build': {
                 'context': './srv/integration_tests',
-                'dockerfile': 'Dockerfile'
+                'dockerfile': pick_dockerfile()
             },
             'volumes': [f"./{srcpath}:/app:rw"],
             'network_mode': 'host',
@@ -412,7 +426,7 @@ class CloudBuilder:
                 'sso.local.redhat.com:172.23.0.3'
             ],
             'depends_on': ['sso.local.redhat.com', 'kcadmin', 'aafrontend', 'aabackend'],
-            'command': jestcmd,
+            'command': testcmd,
         }
         return svc
 
@@ -803,6 +817,8 @@ def main():
     parser.add_argument('--skip_frontend_install', action='store_true')
     parser.add_argument('--node_landing', action='store_true')
     parser.add_argument('--integration', action='store_true')
+    parser.add_argument('--puppeteer', action='store_true')
+    parser.add_argument('--cypress', action='store_true')
     args = parser.parse_args()
 
     cbuilder = CloudBuilder(args=args)

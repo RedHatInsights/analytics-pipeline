@@ -1,0 +1,14 @@
+#from buildkite/puppeteer
+#from cypress/browsers:chrome67
+#from cypress/browsers:node10.16.0-chrome77
+from cypress/included
+
+RUN apt update 
+RUN apt -y install curl
+#RUN apt clean 
+RUN useradd runner
+RUN rm -rf /home/runner
+RUN cp -Rp /home/node /home/runner
+RUN chown -R runner:runner /home/runner
+#RUN su -l node -c 'npm install cypress'
+#RUN su -l runner -c 'cypress install'

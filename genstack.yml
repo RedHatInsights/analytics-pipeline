@@ -133,3 +133,24 @@ services:
         volumes:
             - ./srv/aa_backend_mock:/app
         command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
+    integration:
+        container_name: integration
+        image: aa_integration:latest
+        build:
+            context: ./srv/integration_tests
+            dockerfile: Dockerfile.cypress
+        volumes:
+            - ./srv/integration_tests:/app:rw
+        network_mode: host
+        user: node
+        cap_add:
+            - SYS_ADMIN
+        extra_hosts:
+            - prod.foo.redhat.com:127.0.0.1
+            - sso.local.redhat.com:172.23.0.3
+        depends_on:
+            - sso.local.redhat.com
+            - kcadmin
+            - aafrontend
+            - aabackend
+        command: /bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s npm run tests:integration:cypress"
