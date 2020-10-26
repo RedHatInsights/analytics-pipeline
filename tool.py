@@ -405,6 +405,8 @@ class CloudBuilder:
             testcmd = basecmd + 'npm run tests:integration:puppeteer"'
         elif self.args.cypress:
             testcmd = basecmd + 'npm run tests:integration:cypress"'
+        elif self.args.cypress_debug:
+            testcmd = basecmd + 'npm run tests:integration:cypress-debug"'
         else:
             testcmd = basecmd + './node_modules/jest/bin/jest.js src/index.test.js"'
 
@@ -819,6 +821,7 @@ def main():
     parser.add_argument('--integration', action='store_true')
     parser.add_argument('--puppeteer', action='store_true')
     parser.add_argument('--cypress', action='store_true')
+    parser.add_argument('--cypress_debug', action='store_true')
     args = parser.parse_args()
 
     cbuilder = CloudBuilder(args=args)

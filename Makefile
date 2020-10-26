@@ -34,6 +34,10 @@ stack_ci_cypress: clean
 	python3 tool.py --backend_mock --skip_frontend_install --integration --cypress
 	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
 
+stack_ci_cypress_debug: clean
+	python3 tool.py --backend_mock --skip_frontend_install --integration --cypress_debug
+	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
+
 stack_ci_test: clean
 	python3 tool.py --backend_mock --skip_frontend_install --integration
 	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS)
