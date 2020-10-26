@@ -4,6 +4,8 @@ DOCKER_RESTART_OPTS = -V --force-recreate --always-recreate-deps --attach-depend
 DOCKER_OPTS = $(DOCKER_RESTART_OPTS) --abort-on-container-exit
 
 clean:
+	rm -rf srv/integration_tests/cypress/screenshots/*
+	rm -rf srv/integration_tests/cypress/videos/*
 	docker-compose -f genstack.yml down || echo "docker-compose down failed"
 	docker-compose -f genstack.yml rm -f || echo "docker-compose rm failed"
 	docker volume prune -f
