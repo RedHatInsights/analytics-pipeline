@@ -17,3 +17,4 @@ playbooks/roles/geerling*
 ssh.config
 *.png
 *node_modules*
+srv/integration_tests/cypress/videos
