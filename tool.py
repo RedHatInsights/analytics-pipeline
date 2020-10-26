@@ -413,6 +413,7 @@ class CloudBuilder:
         svc = {
             'container_name': 'integration',
             #'image': 'buildkite/puppeteer',
+            'ipc': 'host',
             'image': 'aa_integration:latest',
             'build': {
                 'context': './srv/integration_tests',

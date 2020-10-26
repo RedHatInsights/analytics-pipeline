@@ -135,6 +135,7 @@ services:
         command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
     integration:
         container_name: integration
+        ipc: host
         image: aa_integration:latest
         build:
             context: ./srv/integration_tests
@@ -153,4 +154,4 @@ services:
             - kcadmin
             - aafrontend
             - aabackend
-        command: /bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s npm run tests:integration:cypress"
+        command: /bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s npm run tests:integration:cypress-debug"
