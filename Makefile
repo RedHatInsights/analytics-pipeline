@@ -40,14 +40,14 @@ stack_ci_puppeteer: clean
 	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
 
 stack_ci_cypress: clean
-	python3 tool.py --backend_mock --skip_frontend_install --static --integration --cypress
+	python3 tool.py --backend_mock --static --integration --cypress
 	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
 
 stack_ci_cypress_debug: clean
 	cat /etc/issue
 	free -m
 	cat /proc/cpuinfo
-	python3 tool.py --backend_mock --skip_frontend_install --static --integration --cypress_debug
+	python3 tool.py --backend_mock --static --integration --cypress_debug
 	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
 
 stack_ci_test: clean
