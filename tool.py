@@ -420,7 +420,8 @@ class CloudBuilder:
             testcmd = basecmd + 'cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"'
         elif self.args.cypress_debug:
             #testcmd = basecmd + 'npm run tests:integration:cypress-debug"'
-            testcmd = basecmd + 'DEBUG=cypress:* cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"'
+            #testcmd = basecmd + 'DEBUG=cypress:* cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"'
+            testcmd = basecmd + 'cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"'
         else:
             testcmd = basecmd + './node_modules/jest/bin/jest.js src/index.test.js"'
 
