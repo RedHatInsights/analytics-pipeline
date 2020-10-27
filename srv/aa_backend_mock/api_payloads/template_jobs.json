@@ -1,0 +1,71 @@
+{
+  "name": "Demo Job Template",
+  "total_run": "17h 19m 54s",
+  "average_run": "00h 00m 15s",
+  "total_run_count": 4134,
+  "failed_run_count": 38,
+  "successful_run_count": 4088,
+  "success_rate": 99,
+  "type": "job",
+  "related_jobs": [
+    {
+      "job_id": 2308,
+      "job_name": "Demo Job Template",
+      "start_time": "2020-10-26T12:35:09.774785+00:00",
+      "total_time": 3.903,
+      "cluster_label": "192.168.0.100",
+      "install_uuid": "37a94701-8952-4eb6-9c57-e5511ee950fd",
+      "status": "successful"
+    },
+    {
+      "job_id": 2306,
+      "job_name": "Demo Job Template",
+      "start_time": "2020-10-26T12:34:40.721886+00:00",
+      "total_time": 3.571,
+      "cluster_label": "192.168.0.100",
+      "install_uuid": "37a94701-8952-4eb6-9c57-e5511ee950fd",
+      "status": "successful"
+    },
+    {
+      "job_id": 20,
+      "job_name": "Demo Job Template",
+      "start_time": "2020-10-23T02:30:14.446111+00:00",
+      "total_time": 2.624,
+      "cluster_label": "192.168.0.181",
+      "install_uuid": "3e63076b-b31a-4867-b53c-be282bc59d4a",
+      "status": "successful"
+    },
+    {
+      "job_id": 27,
+      "job_name": "Demo Job Template",
+      "start_time": "2020-10-21T00:58:31.281857+00:00",
+      "total_time": 4.344,
+      "cluster_label": "10.8.109.243",
+      "install_uuid": "79091e99-64a8-4dbc-8748-b1203d0043b9",
+      "status": "successful"
+    },
+    {
+      "job_id": 22,
+      "job_name": "Demo Job Template",
+      "start_time": "2020-10-20T21:39:25.871527+00:00",
+      "total_time": 4.893,
+      "cluster_label": "10.8.109.243",
+      "install_uuid": "79091e99-64a8-4dbc-8748-b1203d0043b9",
+      "status": "successful"
+    }
+  ],
+  "most_failed_tasks": [
+    {
+      "fail_rate": 95,
+      "task_name": null,
+      "failed_count": 36,
+      "failed_hosts_count": 0
+    },
+    {
+      "fail_rate": 5,
+      "task_name": "Gathering Facts",
+      "failed_count": 2,
+      "failed_hosts_count": 5
+    }
+  ]
+}
