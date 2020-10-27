@@ -137,28 +137,19 @@ class CloudBuilder:
         if not os.path.exists(self.webroot):
             os.makedirs(self.webroot)
 
+        self.make_spandx()
         self.make_aa_frontend()
         self.make_aa_backend()
-
-        #cbuilder.set_chrome_jwt_constants()
-        #self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
-        #cbuilder.fix_chrome()
-
         self.make_www()
+        self.make_entitlements()
+        self.make_rbac()
 
         if not self.args.skip_landing:
             self.make_landing()
-
-        self.make_entitlements()
-
-        self.make_rbac()
-
         if not self.args.skip_chrome:
             self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
 
-        self.make_spandx()
         self.create_compose_file()
-
 
     def get_node_container_user(self):
         '''github actions create bind moundts as root and the node user can't write'''
@@ -259,7 +250,10 @@ class CloudBuilder:
                 'webroot': {
                     'container_name': 'webroot',
                     'image': 'nginx',
-                    'volumes': [f"./{os.path.join(self.checkouts_root, 'www')}:/usr/share/nginx/html"],
+                    'volumes': [
+                        f"./{os.path.join(self.checkouts_root, 'www')}:/usr/share/nginx/html",
+                        f"./{os.path.join(self.checkouts_root, 'nginx.conf.d')}:/etc/nginx/conf.d"
+                    ],
                     'command': ['nginx-debug', '-g', 'daemon off;']
                 },
                 'chrome': {
@@ -296,9 +290,24 @@ class CloudBuilder:
             }
         }
 
-        ds['services']['aafrontend'] = self.get_frontend_service()
+        ds['services'].update(self.get_frontend_service())
         ds['services'].update(self.get_landing_services())
-        #import epdb; epdb.st()
+
+        # if static, chrome/landing/frontend should be compiled and put into wwwroot
+        if self.args.static:
+            ds['services'].pop('chrome', None)
+            ds['services'].pop('chrome_beta', None)
+            ds['services'].pop('landing', None)
+            ds['services'].pop('aafrontend', None)
+
+            if os.path.exists(os.path.join(self.checkouts_root, 'www', 'apps', 'chrome')):
+                shutil.rmtree(os.path.join(self.checkouts_root, 'www', 'apps', 'chrome'))
+
+            shutil.copytree(
+                os.path.join(self.checkouts_root, 'insights-chrome', 'apps', 'chrome'),
+                os.path.join(self.checkouts_root, 'www', 'apps', 'chrome')
+            )
+
 
         # build the backend?
         if self.args.backend_mock:
@@ -365,6 +374,9 @@ class CloudBuilder:
 
 
     def get_frontend_service(self):
+        if self.args.static:
+            return {}
+
         if self.args.frontend_path or self.args.frontend_hash:
             if self.args.frontend_hash:
                 raise Exception('frontend hash not yet implemented!')
@@ -387,7 +399,7 @@ class CloudBuilder:
             'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
             'volumes': [f"./{aa_fe_srcpath}:/app:rw"]
         }
-        return fs
+        return {'aafrontend': fs}
 
     def get_integration_compose(self):
 
@@ -404,9 +416,11 @@ class CloudBuilder:
         if self.args.puppeteer:
             testcmd = basecmd + 'npm run tests:integration:puppeteer"'
         elif self.args.cypress:
-            testcmd = basecmd + 'npm run tests:integration:cypress"'
+            #testcmd = basecmd + 'npm run tests:integration:cypress"'
+            testcmd = basecmd + 'cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"'
         elif self.args.cypress_debug:
-            testcmd = basecmd + 'npm run tests:integration:cypress-debug"'
+            #testcmd = basecmd + 'npm run tests:integration:cypress-debug"'
+            testcmd = basecmd + 'DEBUG=cypress:* cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"'
         else:
             testcmd = basecmd + './node_modules/jest/bin/jest.js src/index.test.js"'
 
@@ -428,9 +442,14 @@ class CloudBuilder:
                 'prod.foo.redhat.com:127.0.0.1',
                 'sso.local.redhat.com:172.23.0.3'
             ],
+            'entrypoint': '',
             'depends_on': ['sso.local.redhat.com', 'kcadmin', 'aafrontend', 'aabackend'],
             'command': testcmd,
         }
+
+        if self.args.static:
+            svc['depends_on'].remove('aafrontend')
+
         return svc
 
     def get_npm_path(self):
@@ -443,14 +462,15 @@ class CloudBuilder:
     def make_spandx(self):
         stemp = SPANDX_TEMPLATE
 
-        if self.args.frontend_path:
-            stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
-        elif self.args.frontend_hash:
-            stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
-        elif self.args.frontend_address:
-            stemp = stemp.replace("FRONTEND", self.args.frontend_address)
-        else:
-            stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
+        if not self.args.static:
+            if self.args.frontend_path:
+                stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
+            elif self.args.frontend_hash:
+                stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
+            elif self.args.frontend_address:
+                stemp = stemp.replace("FRONTEND", self.args.frontend_address)
+            else:
+                stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
 
         if self.args.backend_path:
             stemp = stemp.replace("BACKEND", 'http://fastapi:8080')
@@ -465,10 +485,29 @@ class CloudBuilder:
             stemp = stemp.replace("BACKEND", 'http://fastapi:8080')
 
         # landing is being hosted by the www service ...
-        if not self.args.node_landing:
+        if not self.args.node_landing and not self.args.static:
             stlines = stemp.split('\n')
             stlines = [x for x in stlines if '/apps/landing' not in x]
             stemp = '\n'.join(stlines)
+
+        if self.args.static:
+            stlines = stemp.split('\n')
+            #stlines = [x for x in stlines if '/apps/landing' not in x]
+            #stlines = [x for x in stlines if '/apps/chrome' not in x]
+            #stlines = [x for x in stlines if '/apps/automation-analytics' not in x]
+            #stlines = [x for x in stlines if '/ansible/automation-analytics' not in x]
+            for idx,x in enumerate(stlines):
+                if '/chrome' in x:
+                    stlines[idx] = x.replace('http://chrome', 'http://webroot')
+                elif 'beta/apps/landing' in x:
+                    stlines[idx] = x.replace('http://landing_beta', 'http://webroot')
+                elif 'landing' in x:
+                    stlines[idx] = x.replace('https://landing:8002', 'http://webroot')
+                elif 'analytics' in x and not '/api' in x:
+                    stlines[idx] = x.replace('FRONTEND', 'http://webroot')
+
+            stemp = '\n'.join(stlines)
+            #import epdb; epdb.st()
 
         with open(os.path.join(self.webroot, 'spandx.config.js'), 'w') as f:
             f.write(stemp)
@@ -492,12 +531,40 @@ class CloudBuilder:
                 if res.returncode != 0:
                     raise Exception(f'npm install failed')
 
-        # fixup the dockerfile to add the github actions runner user
-        dfile = os.path.join(srcpath, 'Dockerfile')
-        #with open(dfile, 'r') as f:
-        #    ddata = f.read()
-        with open(dfile, 'w') as f:
-            f.write(NODE_RUNNER_DOCKERFILE)
+        if not self.args.static:
+            # fixup the dockerfile to add the github actions runner user
+            dfile = os.path.join(srcpath, 'Dockerfile')
+            #with open(dfile, 'r') as f:
+            #    ddata = f.read()
+            with open(dfile, 'w') as f:
+                f.write(NODE_RUNNER_DOCKERFILE)
+        else:
+            # static build that will land in the www root ...
+            if os.path.exists(os.path.join(srcpath, 'dist')):
+                shutil.rmtree(os.path.join(srcpath, 'dist'))
+
+            cmd = f'{self.get_npm_path()} run build'
+            print(cmd)
+            res = subprocess.run(cmd, cwd=srcpath, shell=True)
+            if res.returncode != 0:
+                raise Exception(f'npm build failed')
+
+            www = os.path.join(self.checkouts_root, 'www')
+            if os.path.exists(os.path.join(www, 'apps', 'automation-analytics')):
+                shutil.rmtree(os.path.join(www, 'apps', 'automation-analytics'))
+            shutil.copytree(
+                os.path.join(srcpath, 'dist'),
+                os.path.join(www, 'apps', 'automation-analytics')
+            )
+            if os.path.exists(os.path.join(www, 'ansible')):
+                shutil.rmtree(os.path.join(www, 'ansible'))
+            os.makedirs(os.path.join(www, 'ansible'))
+            cmd = f"ln -s ../apps/automation-analytics automation-analytics"
+            res = subprocess.run(cmd, cwd=os.path.join(www, 'ansible'), shell=True)
+            if res.returncode != 0:
+                raise Exception(f'symlinking failed')
+
+            #import epdb; epdb.st()
 
     def make_aa_backend(self):
 
@@ -819,6 +886,7 @@ def main():
     parser.add_argument('--skip_chrome_build', action='store_true')
     parser.add_argument('--skip_frontend_install', action='store_true')
     parser.add_argument('--node_landing', action='store_true')
+    parser.add_argument('--static', action='store_true', help="do not use webpack dev server where possible")
     parser.add_argument('--integration', action='store_true')
     parser.add_argument('--puppeteer', action='store_true')
     parser.add_argument('--cypress', action='store_true')

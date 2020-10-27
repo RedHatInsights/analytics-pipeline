@@ -18,3 +18,5 @@ ssh.config
 *.png
 *node_modules*
 srv/integration_tests/cypress/videos
+srv/www/ansible
+srv/www/apps

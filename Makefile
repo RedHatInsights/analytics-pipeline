@@ -22,16 +22,25 @@ stack_backend_mock: clean
 	cat genstack.yml
 	docker-compose -f genstack.yml up $(DOCKER_OPTS)
 
+stack_mock_static: clean
+	python3 tool.py --backend_mock --skip_frontend_install --static
+	cat genstack.yml
+	docker-compose -f genstack.yml up $(DOCKER_OPTS)
+
 stack_ci: clean
-	python3 tool.py --backend_mock --skip_frontend_install --integration
+	python3 tool.py --backend_mock --skip_frontend_install --integration --static
 	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
+
+stack_ci_devservers: clean
+	python3 tool.py --backend_mock --skip_frontend_install
+	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS)
 
 stack_ci_puppeteer: clean
 	python3 tool.py --backend_mock --skip_frontend_install --integration --puppeteer
 	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
 
 stack_ci_cypress: clean
-	python3 tool.py --backend_mock --skip_frontend_install --integration --cypress
+	python3 tool.py --backend_mock --skip_frontend_install --static --integration --cypress
 	docker-compose -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
 
 stack_ci_cypress_debug: clean
