@@ -14,6 +14,7 @@ httplib2
 idna
 itsdangerous
 Jinja2
+logzero
 MarkupSafe
 oauth2client
 PyYAML

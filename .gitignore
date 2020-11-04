@@ -20,3 +20,6 @@ ssh.config
 srv/integration_tests/cypress/videos
 srv/www/ansible
 srv/www/apps
+srv/squid/logs
+
+.DS_Store

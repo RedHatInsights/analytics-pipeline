@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 
 import argparse
+import copy
 import getpass
 import os
 import shutil
 import subprocess
 import sys
 
+import platform
 import yaml
 import ruamel.yaml
 from ruamel.yaml import YAML
 
+from logzero import logger
 from pprint import pprint
-
 
 NODE_RUNNER_DOCKERFILE = '''
 FROM node:10.22
@@ -117,7 +119,221 @@ FLASKREQUIREMENTS = '''flask
 cryptography
 '''
 
+
+class GenericFrontendComponent:
+
+    _installed = False
+    _built = False
+    distdir = 'dist'
+    www_app_name = None
+
+    def __init__(self, cloudbuilder, repo, srcpath, name):
+        self.name = name
+        self.repo = repo
+        self.srcpath = srcpath
+        self.cb = cloudbuilder
+        self.clone()
+        self.configure()
+        self.preinstall()
+        self.install()
+        self.prebuild()
+        self.build()
+        self.postbuild()
+        self.predeploy()
+        self.deploy()
+        self.postdeploy()
+
+    @property
+    def installed(self):
+        return self._installed
+
+    @property
+    def built(self):
+        return self._built
+
+
+    def get_npm_path(self):
+        # /home/vagrant/.nvm/versions/node/v10.15.3/bin/npm
+        #npath = os.path.expanduser('~/.nvm/versions/node/v10.15.3/bin/npm')
+        res = subprocess.run('which npm', shell=True, stdout=subprocess.PIPE)
+        npath = res.stdout.decode('utf-8').strip()
+        return npath
+
+    def clone(self):
+        if not os.path.exists(self.srcpath):
+            logger.info(f"clone {self.repo}")
+            cmd = f'git clone {self.repo} {self.srcpath}'
+            res = subprocess.run(cmd, shell=True)
+            if res.returncode != 0:
+                raise Exception(f'cloning {self.repo} failed')
+
+    def configure(self):
+        pass
+
+    def preinstall(self):
+        pass
+
+    def install(self):
+        # should we install?
+        install = False
+        if self.cb.args.static:
+            install = True
+
+        if os.path.exists(os.path.join(self.srcpath, 'node_modules')):
+            install = False
+
+        if not install:
+            return
+
+        cmd = ' '.join([self.get_npm_path(), 'install'])
+        logger.info(f'installing npm deps for {self.name}') 
+        logger.info(cmd)
+        res = subprocess.run(cmd, shell=True, cwd=self.srcpath)
+        if res.returncode != 0:
+            raise Exception(f'npm install failed')
+
+        self._installed = True
+
+    def prebuild(self):
+        pass
+
+    def build(self):
+        # should we build?
+        build = False
+        if self.cb.args.static:
+            build = True
+
+        # aa & landing
+        if os.path.exists(os.path.join(self.srcpath, 'dist')):
+            build = False
+
+        # chrome
+        if os.path.exists(os.path.join(self.srcpath, 'build')):
+            build = False
+
+        if not build:
+            return
+
+        cmd = ' '.join([self.get_npm_path(), 'run', 'build'])
+        logger.info(f'building static version of {self.name}') 
+        logger.info(cmd)
+        res = subprocess.run(cmd, shell=True, cwd=self.srcpath)
+        if res.returncode != 0:
+            raise Exception(f'npm run build failed')
+
+        self._built = True
+
+    def postbuild(self):
+        pass
+
+    def predeploy(self):
+        pass
+
+    def deploy(self):
+        if self.cb.args.static:
+            wwwdir = os.path.join(self.cb.checkouts_root, 'www')
+            appsdir = os.path.join(wwwdir, 'apps')
+            src = os.path.join(self.srcpath, self.distdir)
+            dst = os.path.join(appsdir, self.www_app_name)
+            if os.path.exists(dst):
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst)
+
+    def postdeploy(self):
+        pass
+
+"""
+insights_proxy| GET /apps/landing/js/App.js from http://webroot/apps/landing/js/App.js
+webroot       | 2020/11/02 16:18:42 [error] 22#22: *19 open() "/usr/share/nginx/html/apps/landing/js/App.js" failed (2: No such file or directory), client: 172.29.0.6, server: localhost, request: "GET /apps/landing/js/App.js HTTP/1.1", host: "webroot", referrer: "https://prod.foo.redhat.com:8443/"
+webroot       | 172.29.0.6 - - [02/Nov/2020:16:18:42 +0000] "GET /apps/landing/js/App.js HTTP/1.1" 404 555 "https://prod.foo.redhat.com:8443/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/85.0.4183.121 Safari/537.36" "-"  
+"""
+class LandingPageFrontend(GenericFrontendComponent):
+
+    www_app_name = 'landing'
+
+    def configure(self):
+
+        # kill the hashed filenames ...
+        cfile = os.path.join(self.srcpath, 'config', 'base.webpack.config.js')
+        with open(cfile, 'r') as f:
+            cdata = f.read()
+        if '.[hash]' in cdata:
+            cdata = cdata.replace('.[hash]', '')
+            with open(cfile, 'w') as f:
+                f.write(cdata)
+
+        # kill the /beta prefix ...
+        cfg = os.path.join(self.srcpath, 'config', 'webpack.common.js')
+        with open(cfg, 'r') as f:
+            cdata = f.read()
+        cdata = cdata.replace('/beta/apps', '/apps')
+        with open(cfg, 'w') as f:
+            f.write(cdata)
+
+    '''
+    def postbuild(self):
+        # need to make App.js available via a symlink
+        jsdir = os.path.join(self.srcpath, self.distdir, 'js')
+        if os.path.exists(jsdir):
+            linkfile = os.path.join(jsdir, 'App.js')
+            if not os.path.exists(linkfile):
+                cmd = f'ln -s App.*.js App.js'
+                res = subprocess.run(cmd, shell=True, cwd=jsdir)
+                if res.returncode != 0:
+                    raise Exception(f'symlinking failed')
+    '''
+
+class InsightsChrome(GenericFrontendComponent):
+
+    www_app_name = 'chrome'
+    distdir = 'build'
+
+    def configure(self):
+        constants_path = os.path.join(self.srcpath, 'src', 'js', 'jwt', 'constants.js')
+        with open(constants_path, 'r') as f:
+            cdata = f.read()
+        cdata = cdata.replace('https://sso.redhat.com', self.cb.keycloak)
+        with open(constants_path, 'w') as f:
+            f.write(cdata)
+
+    def postbuild(self):
+        # link the hashed css file to non-hashed
+        if os.path.exists(os.path.join(self.srcpath, 'build', 'chrome.css')):
+            os.remove(os.path.join(self.srcpath, 'build', 'chrome.css'))
+        cmd = 'ln -s chrome.*.css chrome.css'
+        res = subprocess.run(cmd, cwd=os.path.join(self.srcpath, 'build'), shell=True)
+        if res.returncode != 0:
+            raise Exception('chrome.css symlinking failed')
+
+        # link the hashed js file to non-hashed
+        if os.path.exists(os.path.join(self.srcpath, 'build', 'js', 'chrome.js')):
+            os.remove(os.path.join(self.srcpath, 'build', 'js', 'chrome.js'))
+        cmd = 'ln -s chrome.*.js chrome.js'
+        res = subprocess.run(cmd, cwd=os.path.join(self.srcpath, 'build', 'js'), shell=True)
+        if res.returncode != 0:
+            raise Exception('chrome.js symlinking failed')
+
+
+class TowerAnalyticsFrontend(GenericFrontendComponent):
+
+    www_app_name = 'automation-analytics'
+
+    def postdeploy(self):
+        if self.cb.args.static:
+            wwwdir = os.path.join(self.cb.checkouts_root, 'www')
+            ansible_dir = os.path.join(wwwdir, 'ansible')
+            if not os.path.exists(ansible_dir):
+                os.makedirs(ansible_dir)
+            if not os.path.exists(os.path.join(wwwdir, 'ansible', self.www_app_name)):
+                cmd = f'ln -s ../apps/{self.www_app_name} {self.www_app_name}'
+                res = subprocess.run(cmd, shell=True, cwd=ansible_dir)
+                if res.returncode != 0:
+                    raise Exception(f'symlink failed')
+
+
+
 class CloudBuilder:
+    frontend_components = None
     checkouts_root = "srv"
     webroot = "srv/www"
     cache_root = "cache"
@@ -137,17 +353,32 @@ class CloudBuilder:
         if not os.path.exists(self.webroot):
             os.makedirs(self.webroot)
 
+        self.frontend_components = []
+        for svc_name in ['insights-chrome', 'landing-page-frontend', 'tower-analytics-frontend']:
+            src_path = os.path.join(self.checkouts_root, svc_name)
+            repo = f'https://github.com/RedHatInsights/{svc_name}'
+            logger.info(f"create service object for {svc_name}")
+            if svc_name == 'landing-page-frontend':
+                gfc = LandingPageFrontend(self, repo, src_path, svc_name)
+            elif svc_name == 'insights-chrome':
+                gfc = InsightsChrome(self, repo, src_path, svc_name)
+            elif svc_name == 'tower-analytics-frontend':
+                gfc = TowerAnalyticsFrontend(self, repo, src_path, svc_name)
+            else:
+                gfc = GenericFrontendComponent(self, repo, src_path, svc_name)
+            self.frontend_components.append(gfc)
+
         self.make_spandx()
-        self.make_aa_frontend()
-        self.make_aa_backend()
+        #self.make_aa_frontend()
+        #self.make_aa_backend()
         self.make_www()
         self.make_entitlements()
         self.make_rbac()
 
-        if not self.args.skip_landing:
-            self.make_landing()
-        if not self.args.skip_chrome:
-            self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
+        #if not self.args.skip_landing:
+        #    self.make_landing()
+        #if not self.args.skip_chrome:
+        #    self.make_chrome(build=not self.args.skip_chrome_build, reset=not self.args.skip_chrome_reset)
 
         self.create_compose_file()
 
@@ -180,37 +411,17 @@ class CloudBuilder:
                 'local_kafka_data': {}
             },
             'services': {
-                'kcpostgres': {
-                    'container_name': 'kcpostgres',
-                    'image': 'postgres:12.2',
-                    'environment': {
-                        'POSTGRES_DB': 'keycloak',
-                        'POSTGRES_USER': 'keycloak',
-                        'POSTGRES_PASSWORD': 'keycloak',
-                    },
-                    #'ports': ['25432:5432'],
-                    'networks': {
-                        'ssonet': {
-                            'ipv4_address': '172.23.0.2'
-                        }
-                    }
-                },
                 'sso.local.redhat.com': {
                     'container_name': 'sso.local.redhat.com',
                     'image': 'quay.io/keycloak/keycloak:11.0.0',
                     'environment': {
-                        'DB_VENDOR': 'postgres',
-                        'DB_ADDR': 'kcpostgres',
-                        'DB_DATABASE': 'keycloak',
-                        'DB_USER': 'keycloak',
-                        'DB_PASSWORD': 'keycloak',
+                        'DB_VENDOR': 'h2',
                         'PROXY_ADDRESS_FORWARDING': "true",
                         'KEYCLOAK_USER': 'admin',
                         'KEYCLOAK_PASSWORD': 'password',
                     },
                     #'ports': ['8443:8443'],
                     'expose': [8443],
-                    'depends_on': ['kcpostgres'],
                     'networks': {
                         'ssonet': {
                             'ipv4_address': '172.23.0.3'
@@ -293,21 +504,38 @@ class CloudBuilder:
         ds['services'].update(self.get_frontend_service())
         ds['services'].update(self.get_landing_services())
 
+        # macs can't do static IPs
+        #if platform.system().lower() == 'darwin':
+        if True:
+            ds['services']['kcadmin'].pop('networks', None)
+            ds['services']['sso.local.redhat.com'].pop('networks', None)
+            ds['services']['sso.local.redhat.com'].pop('depends_on', None)
+
+            squid_logs = os.path.join(self.checkouts_root, 'squid', 'logs')
+            squid_conf = os.path.join(self.checkouts_root, 'squid', 'conf')
+            if not os.path.exists(squid_logs):
+                os.makedirs(squid_logs)
+            ds['services']['squid'] = {
+                'container_name': 'squid',
+                'image': 'datadog/squid',
+                'ports': ['3128:3128'],
+                'volumes': [
+                    f"./{squid_conf}:/etc/squid",
+                    f"./{squid_logs}:/var/log/squid",
+                ]
+            }
+
+            pf = copy.deepcopy(ds['services']['insights_proxy'])
+            pf['container_name'] = 'prod.foo.redhat.com'
+            ds['services'].pop('insights_proxy', None)
+            ds['services']['prod.foo.redhat.com'] = pf
+
         # if static, chrome/landing/frontend should be compiled and put into wwwroot
         if self.args.static:
             ds['services'].pop('chrome', None)
             ds['services'].pop('chrome_beta', None)
             ds['services'].pop('landing', None)
             ds['services'].pop('aafrontend', None)
-
-            if os.path.exists(os.path.join(self.checkouts_root, 'www', 'apps', 'chrome')):
-                shutil.rmtree(os.path.join(self.checkouts_root, 'www', 'apps', 'chrome'))
-
-            shutil.copytree(
-                os.path.join(self.checkouts_root, 'insights-chrome', 'apps', 'chrome'),
-                os.path.join(self.checkouts_root, 'www', 'apps', 'chrome')
-            )
-
 
         # build the backend?
         if self.args.backend_mock:
@@ -336,7 +564,7 @@ class CloudBuilder:
             ds['services']['integration'] = self.get_integration_compose()
 
         yaml = YAML(typ='rt', pure=True)
-        yaml.preserve_quotes = True
+        yaml.preserve_quotes = False
         yaml.indent=4
         yaml.block_seq_indent=4
         yaml.explicit_start = True
@@ -345,6 +573,14 @@ class CloudBuilder:
 
         with open('genstack.yml', 'w') as f:
             yaml.dump(ds, f)
+
+        # fix port quoting for sshd ...
+        with open('genstack.yml', 'r') as f:
+            fyaml = f.read()
+        fyaml = fyaml.replace('2222:22', '\'2222:22\'')
+        with open('genstack.yml', 'w') as f:
+            f.write(fyaml)
+        #import epdb; epdb.st()
 
 
     def get_landing_services(self):
@@ -451,6 +687,11 @@ class CloudBuilder:
         if self.args.static:
             svc['depends_on'].remove('aafrontend')
 
+        #if platform.system().lower() == 'darwin':
+        if True:
+            svc.pop('network_mode', None)
+            svc.pop('extra_hosts', None)
+
         return svc
 
     def get_npm_path(self):
@@ -526,11 +767,14 @@ class CloudBuilder:
         if not self.args.skip_frontend_install:
             node_modules = os.path.join(srcpath, 'node_modules')
             if not os.path.exists(node_modules):
+                '''
                 cmd = [self.get_npm_path(), 'install']
                 print(cmd)
                 res = subprocess.run(cmd, cwd=srcpath)
                 if res.returncode != 0:
                     raise Exception(f'npm install failed')
+                '''
+                NpmInstaller(self).run_install(srcpath)
 
         if not self.args.static:
             # fixup the dockerfile to add the github actions runner user
@@ -700,18 +944,10 @@ class CloudBuilder:
 
         nm = os.path.join(srcpath, 'node_modules')
         if not os.path.exists(nm):
-            cmd = f'{self.get_npm_path()} install'
-            print(cmd)
-            res = subprocess.run(cmd, cwd=srcpath, shell=True)
-            if res.returncode != 0:
-                raise Exception(f'npm install failed')
+            NpmInstaller(self).run_install(srcpath)
 
         if not os.path.exists(os.path.join(srcpath, 'dist', 'index.html')):
-            cmd = f'{self.get_npm_path()} run build'
-            print(cmd)
-            res = subprocess.run(cmd, cwd=srcpath, shell=True)
-            if res.returncode != 0:
-                raise Exception(f'npm build failed')
+            NpmBuilder(self).run_build(srcpath)
 
         # Are we going to run this is a service or are we going to host it with nginx?
         if not self.args.node_landing:
@@ -768,11 +1004,14 @@ class CloudBuilder:
         '''
         nm = os.path.join(srcpath, 'node_modules')
         if not os.path.exists(nm) and build:
+            '''
             cmd = [self.get_npm_path(), 'install']
             print(cmd)
             res = subprocess.run(cmd, cwd=srcpath)
             if res.returncode != 0:
                 raise Exception('npm install failed')
+            '''
+            NpmInstaller(self).run_installer(srcpath)
 
         # build the src
         if os.path.exists(os.path.join(srcpath, 'build')) and build:
@@ -894,6 +1133,7 @@ def main():
     parser.add_argument('--cypress_debug', action='store_true')
     args = parser.parse_args()
 
+    logger.info("starting cloudbuilder")
     cbuilder = CloudBuilder(args=args)
 
 

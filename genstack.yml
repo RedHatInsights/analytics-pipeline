@@ -11,35 +11,16 @@ volumes:
     local_zookeeper_data: {}
     local_kafka_data: {}
 services:
-    kcpostgres:
-        container_name: kcpostgres
-        image: postgres:12.2
-        environment:
-            POSTGRES_DB: keycloak
-            POSTGRES_USER: keycloak
-            POSTGRES_PASSWORD: keycloak
-        networks:
-            ssonet:
-                ipv4_address: 172.23.0.2
     sso.local.redhat.com:
         container_name: sso.local.redhat.com
         image: quay.io/keycloak/keycloak:11.0.0
         environment:
-            DB_VENDOR: postgres
-            DB_ADDR: kcpostgres
-            DB_DATABASE: keycloak
-            DB_USER: keycloak
-            DB_PASSWORD: keycloak
+            DB_VENDOR: h2
             PROXY_ADDRESS_FORWARDING: 'true'
             KEYCLOAK_USER: admin
             KEYCLOAK_PASSWORD: password
         expose:
             - 8443
-        depends_on:
-            - kcpostgres
-        networks:
-            ssonet:
-                ipv4_address: 172.23.0.3
     kcadmin:
         container_name: kcadmin
         image: python:3
@@ -50,46 +31,12 @@ services:
         depends_on:
             - sso.local.redhat.com
         command: /bin/bash -c "cd /app && pip install -r requirements.txt && python -c 'from kchelper import init_realm; init_realm()' && flask run --host=0.0.0.0 --port=80"
-        networks:
-            ssonet:
-                ipv4_address: 172.23.0.4
-    insights_proxy:
-        container_name: insights_proxy
-        image: redhatinsights/insights-proxy
-        ports:
-            - 8443:8443
-        environment:
-            SPANDX_PORT: 8443
-        security_opt:
-            - label=disable
-        extra_hosts:
-            - prod.foo.redhat.com:127.0.0.1
-        volumes:
-            - ./srv/www/spandx.config.js:/config/spandx.config.js
     webroot:
         container_name: webroot
         image: nginx
         volumes:
             - ./srv/www:/usr/share/nginx/html
             - ./srv/nginx.conf.d:/etc/nginx/conf.d
-        command:
-            - nginx-debug
-            - -g
-            - daemon off;
-    chrome:
-        container_name: chrome
-        image: nginx
-        volumes:
-            - ./srv/insights-chrome:/usr/share/nginx/html
-        command:
-            - nginx-debug
-            - -g
-            - daemon off;
-    chrome_beta:
-        container_name: chrome_beta
-        image: nginx
-        volumes:
-            - ./srv/insights-chrome:/usr/share/nginx/html
         command:
             - nginx-debug
             - -g
@@ -110,20 +57,27 @@ services:
         volumes:
             - ./srv/rbac:/app
         command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
-    aafrontend:
-        container_name: aafrontend
-        image: noderunner:latest
-        build:
-            context: ./srv/tower-analytics-frontend
-            dockerfile: Dockerfile
-        user: node
+    squid:
+        container_name: squid
+        image: datadog/squid
         ports:
-            - 8002:8002
-        environment:
-            DEBUG: express:*
-        command: /bin/bash -c "cd /app && npm install && npm run start:container"
+            - 3128:3128
         volumes:
-            - ./srv/tower-analytics-frontend:/app:rw
+            - ./srv/squid/conf:/etc/squid
+            - ./srv/squid/logs:/var/log/squid
+    prod.foo.redhat.com:
+        container_name: prod.foo.redhat.com
+        image: redhatinsights/insights-proxy
+        ports:
+            - 8443:8443
+        environment:
+            SPANDX_PORT: 8443
+        security_opt:
+            - label=disable
+        extra_hosts:
+            - prod.foo.redhat.com:127.0.0.1
+        volumes:
+            - ./srv/www/spandx.config.js:/config/spandx.config.js
     aabackend:
         container_name: aabackend
         image: python:3
@@ -134,3 +88,21 @@ services:
         volumes:
             - ./srv/aa_backend_mock:/app
         command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
+    integration:
+        container_name: integration
+        ipc: host
+        image: aa_integration:latest
+        build:
+            context: ./srv/integration_tests
+            dockerfile: Dockerfile.cypress
+        volumes:
+            - ./srv/integration_tests:/app:rw
+        user: node
+        cap_add:
+            - SYS_ADMIN
+        entrypoint: ''
+        depends_on:
+            - sso.local.redhat.com
+            - kcadmin
+            - aabackend
+        command: /bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"
