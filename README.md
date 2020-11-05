@@ -20,7 +20,7 @@ the backend returns large amounts of data? You can find out.
     source venv/bin/activate
     pip install -r requirements.txt
     pip install --upgrade docker-compose
-    make stack
+    make stack_ci_cypress
 
 ## keycloak
 
