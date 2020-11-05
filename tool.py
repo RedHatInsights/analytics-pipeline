@@ -3,6 +3,7 @@
 import argparse
 import copy
 import getpass
+import json
 import os
 import shutil
 import subprocess
@@ -120,12 +121,43 @@ cryptography
 '''
 
 
+class HostVerifier:
+
+    def __init__(self, args):
+        self.args = args
+        self.run()
+
+    def run(self):
+        self.verify_docker()
+
+    def verify_docker(self):
+        cmd = 'which docker'
+        res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+        if res.returncode != 0:
+            raise Exception("docker was not found in your PATH")
+
+        if platform.system().lower() == 'darwin':
+            settings_path = '~/Library/Group Containers/group.com.docker/settings.json'
+            settings_path = os.path.expanduser(settings_path)
+            with open(settings_path, 'r') as f:
+                settings = json.loads(f.read())
+
+            shares = settings['filesharingDirectories']
+            if shares != ['/Users']:
+                msg = 'docker is configured to share more than /Users and this causes performance issues'
+                raise Exception(msg)
+
+            if settings['memoryMiB'] < 4000:
+                raise Exception("the docker service needs at least 4GB of RAM")
+
+
 class GenericFrontendComponent:
 
     _installed = False
     _built = False
     distdir = 'dist'
     www_app_name = None
+    www_deploy_paths = None
 
     def __init__(self, cloudbuilder, repo, srcpath, name):
         self.name = name
@@ -176,7 +208,7 @@ class GenericFrontendComponent:
     def install(self):
         # should we install?
         install = False
-        if self.cb.args.static:
+        if 'all' in self.cb.args.static or self.www_app_name in self.cb.args.static:
             install = True
 
         if os.path.exists(os.path.join(self.srcpath, 'node_modules')):
@@ -200,7 +232,8 @@ class GenericFrontendComponent:
     def build(self):
         # should we build?
         build = False
-        if self.cb.args.static:
+        #if self.cb.args.static:
+        if 'all' in self.cb.args.static or self.www_app_name in self.cb.args.static:
             build = True
 
         # aa & landing
@@ -230,6 +263,7 @@ class GenericFrontendComponent:
         pass
 
     def deploy(self):
+        '''
         if self.cb.args.static:
             wwwdir = os.path.join(self.cb.checkouts_root, 'www')
             appsdir = os.path.join(wwwdir, 'apps')
@@ -237,7 +271,9 @@ class GenericFrontendComponent:
             dst = os.path.join(appsdir, self.www_app_name)
             if os.path.exists(dst):
                 shutil.rmtree(dst)
+            logger.info(f'deploy {src} -> {dst}')
             shutil.copytree(src, dst)
+        '''
 
     def postdeploy(self):
         pass
@@ -250,8 +286,11 @@ webroot       | 172.29.0.6 - - [02/Nov/2020:16:18:42 +0000] "GET /apps/landing/j
 class LandingPageFrontend(GenericFrontendComponent):
 
     www_app_name = 'landing'
+    www_deploy_paths = ['apps/landing']
 
     def configure(self):
+
+        logger.info(f'configure {self.www_app_name}')
 
         # kill the hashed filenames ...
         cfile = os.path.join(self.srcpath, 'config', 'base.webpack.config.js')
@@ -270,25 +309,17 @@ class LandingPageFrontend(GenericFrontendComponent):
         with open(cfg, 'w') as f:
             f.write(cdata)
 
-    '''
-    def postbuild(self):
-        # need to make App.js available via a symlink
-        jsdir = os.path.join(self.srcpath, self.distdir, 'js')
-        if os.path.exists(jsdir):
-            linkfile = os.path.join(jsdir, 'App.js')
-            if not os.path.exists(linkfile):
-                cmd = f'ln -s App.*.js App.js'
-                res = subprocess.run(cmd, shell=True, cwd=jsdir)
-                if res.returncode != 0:
-                    raise Exception(f'symlinking failed')
-    '''
 
 class InsightsChrome(GenericFrontendComponent):
 
     www_app_name = 'chrome'
     distdir = 'build'
+    www_deploy_paths = ['apps/chrome']
 
     def configure(self):
+
+        logger.info(f'configure {self.www_app_name}')
+
         constants_path = os.path.join(self.srcpath, 'src', 'js', 'jwt', 'constants.js')
         with open(constants_path, 'r') as f:
             cdata = f.read()
@@ -297,10 +328,14 @@ class InsightsChrome(GenericFrontendComponent):
             f.write(cdata)
 
     def postbuild(self):
+
+        logger.info(f'postbuild {self.www_app_name}')
+
         # link the hashed css file to non-hashed
         if os.path.exists(os.path.join(self.srcpath, 'build', 'chrome.css')):
             os.remove(os.path.join(self.srcpath, 'build', 'chrome.css'))
         cmd = 'ln -s chrome.*.css chrome.css'
+        logger.info(cmd)
         res = subprocess.run(cmd, cwd=os.path.join(self.srcpath, 'build'), shell=True)
         if res.returncode != 0:
             raise Exception('chrome.css symlinking failed')
@@ -309,6 +344,7 @@ class InsightsChrome(GenericFrontendComponent):
         if os.path.exists(os.path.join(self.srcpath, 'build', 'js', 'chrome.js')):
             os.remove(os.path.join(self.srcpath, 'build', 'js', 'chrome.js'))
         cmd = 'ln -s chrome.*.js chrome.js'
+        logger.info(cmd)
         res = subprocess.run(cmd, cwd=os.path.join(self.srcpath, 'build', 'js'), shell=True)
         if res.returncode != 0:
             raise Exception('chrome.js symlinking failed')
@@ -317,23 +353,27 @@ class InsightsChrome(GenericFrontendComponent):
 class TowerAnalyticsFrontend(GenericFrontendComponent):
 
     www_app_name = 'automation-analytics'
+    www_deploy_paths = ['apps/automation-analytics', 'ansible/automation-analytics']
 
     def postdeploy(self):
+
+        logger.info(f'postdeploy {self.www_app_name}')
+
         if self.cb.args.static:
             wwwdir = os.path.join(self.cb.checkouts_root, 'www')
             ansible_dir = os.path.join(wwwdir, 'ansible')
             if not os.path.exists(ansible_dir):
                 os.makedirs(ansible_dir)
+            '''
             if not os.path.exists(os.path.join(wwwdir, 'ansible', self.www_app_name)):
                 cmd = f'ln -s ../apps/{self.www_app_name} {self.www_app_name}'
                 res = subprocess.run(cmd, shell=True, cwd=ansible_dir)
                 if res.returncode != 0:
                     raise Exception(f'symlink failed')
-
-
+            '''
 
 class CloudBuilder:
-    frontend_components = None
+    frontend_services = None
     checkouts_root = "srv"
     webroot = "srv/www"
     cache_root = "cache"
@@ -353,7 +393,7 @@ class CloudBuilder:
         if not os.path.exists(self.webroot):
             os.makedirs(self.webroot)
 
-        self.frontend_components = []
+        self.frontend_services = []
         for svc_name in ['insights-chrome', 'landing-page-frontend', 'tower-analytics-frontend']:
             src_path = os.path.join(self.checkouts_root, svc_name)
             repo = f'https://github.com/RedHatInsights/{svc_name}'
@@ -366,7 +406,7 @@ class CloudBuilder:
                 gfc = TowerAnalyticsFrontend(self, repo, src_path, svc_name)
             else:
                 gfc = GenericFrontendComponent(self, repo, src_path, svc_name)
-            self.frontend_components.append(gfc)
+            self.frontend_services.append(gfc)
 
         self.make_spandx()
         #self.make_aa_frontend()
@@ -501,11 +541,14 @@ class CloudBuilder:
             }
         }
 
-        ds['services'].update(self.get_frontend_service())
+        ds['services'].update(self.get_tower_analytics_frontend_service())
         ds['services'].update(self.get_landing_services())
+        #import epdb; epdb.st()
 
         # macs can't do static IPs
-        #if platform.system().lower() == 'darwin':
+        if platform.system().lower() == 'darwin':
+            ds.pop('networks', None)
+
         if True:
             ds['services']['kcadmin'].pop('networks', None)
             ds['services']['sso.local.redhat.com'].pop('networks', None)
@@ -532,10 +575,24 @@ class CloudBuilder:
 
         # if static, chrome/landing/frontend should be compiled and put into wwwroot
         if self.args.static:
-            ds['services'].pop('chrome', None)
-            ds['services'].pop('chrome_beta', None)
-            ds['services'].pop('landing', None)
-            ds['services'].pop('aafrontend', None)
+
+            if 'all' in self.args.static or 'chrome' in self.args.static:
+                ds['services'].pop('chrome', None)
+                ds['services'].pop('chrome_beta', None)
+            if 'all' in self.args.static or 'landing' in self.args.static:
+                ds['services'].pop('landing', None)
+            if 'all' in self.args.static or 'tower-analytics-frontend' in self.args.static:
+                ds['services'].pop('aafrontend', None)
+
+            for fc in self.frontend_services:
+                if 'all' in self.args.static or fc.www_app_name in self.args.static:
+                    for dp in fc.www_deploy_paths:
+                        src = os.path.join(fc.srcpath, fc.distdir)
+                        dst = f"/usr/share/nginx/html/{dp}"
+                        volume = f"./{src}:{dst}"
+                        ds['services']['webroot']['volumes'].append(volume)
+                        #import epdb; epdb.st()
+
 
         # build the backend?
         if self.args.backend_mock:
@@ -584,17 +641,9 @@ class CloudBuilder:
 
 
     def get_landing_services(self):
-        '''
-        'landing_beta': {
-            'container_name': 'landing_beta',
-            'image': 'nginx',
-            'volumes': [f"./{os.path.join(self.checkouts_root, 'landing-page-frontend', 'dist')}:/usr/share/nginx/html/beta/apps/landing"],
-            'command': ['nginx-debug', '-g', 'daemon off;']
-        },
-        '''
 
         svcs = {}
-        if self.args.node_landing:
+        if 'all' not in self.args.static and 'landing' not in self.args.static:
             svcs['landing'] = {
                 'container_name': 'landing',
                 'image': 'node:10.22.0',
@@ -609,8 +658,9 @@ class CloudBuilder:
         return svcs
 
 
-    def get_frontend_service(self):
-        if self.args.static:
+    def get_tower_analytics_frontend_service(self):
+
+        if 'all' in self.args.static or 'tower-analytics-frontend' in self.args.static:
             return {}
 
         if self.args.frontend_path or self.args.frontend_hash:
@@ -635,10 +685,14 @@ class CloudBuilder:
             'command': '/bin/bash -c "cd /app && npm install && npm run start:container"',
             'volumes': [f"./{aa_fe_srcpath}:/app:rw"]
         }
-        return {'aafrontend': fs}
+
+        #pprint(fs)
+
+        return {'tower-analytics-frontend': fs}
 
     def get_integration_compose(self):
 
+        # pick a dockerfile based on the test framework selected
         def pick_dockerfile():
             if self.args.puppeteer:
                 return 'Dockerfile.puppeteer'
@@ -646,51 +700,37 @@ class CloudBuilder:
                 return 'Dockerfile.cypress'
             return 'Dockerfile'
 
+        # build the entrypoing/command for the container ...
         srcpath = os.path.join(self.checkouts_root, 'integration_tests')
-        #jestcmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s ./node_modules/jest/bin/jest.js src/index.test.js"'
         basecmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s '
         if self.args.puppeteer:
             testcmd = basecmd + 'npm run tests:integration:puppeteer"'
-        elif self.args.cypress:
-            #testcmd = basecmd + 'npm run tests:integration:cypress"'
-            testcmd = basecmd + 'cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"'
-        elif self.args.cypress_debug:
-            #testcmd = basecmd + 'npm run tests:integration:cypress-debug"'
-            #testcmd = basecmd + 'DEBUG=cypress:* cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"'
+        elif self.args.cypress or self.args.cypress_debug:
             testcmd = basecmd + 'cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"'
         else:
             testcmd = basecmd + './node_modules/jest/bin/jest.js src/index.test.js"'
 
         svc = {
             'container_name': 'integration',
-            #'image': 'buildkite/puppeteer',
-            'ipc': 'host',
             'image': 'aa_integration:latest',
             'build': {
                 'context': './srv/integration_tests',
                 'dockerfile': pick_dockerfile()
             },
             'volumes': [f"./{srcpath}:/app:rw"],
-            'network_mode': 'host',
-            #'user': 'node',
             'user': self.get_node_container_user(),
-            'cap_add': ['SYS_ADMIN'],
-            'extra_hosts': [
-                'prod.foo.redhat.com:127.0.0.1',
-                'sso.local.redhat.com:172.23.0.3'
-            ],
             'entrypoint': '',
             'depends_on': ['sso.local.redhat.com', 'kcadmin', 'aafrontend', 'aabackend'],
             'command': testcmd,
         }
 
-        if self.args.static:
-            svc['depends_on'].remove('aafrontend')
+        # these are very important for cypress to work in a container ...
+        svc['ipc'] = 'host'
+        svc['cap_add'] = ['SYS_ADMIN']
 
-        #if platform.system().lower() == 'darwin':
-        if True:
-            svc.pop('network_mode', None)
-            svc.pop('extra_hosts', None)
+        # is the frontend standalone or in webroot?
+        if 'all' in self.args.static or 'tower-analytics-frontend' in self.args.static:
+            svc['depends_on'].remove('aafrontend')
 
         return svc
 
@@ -702,9 +742,13 @@ class CloudBuilder:
         return npath
 
     def make_spandx(self):
+
+        logger.info('generate spandx.js')
+
         stemp = SPANDX_TEMPLATE
 
-        if not self.args.static:
+        #if not self.args.static:
+        if 'all' not in self.args.static and 'tower-analytics-frontend' not in self.args.static:
             if self.args.frontend_path:
                 stemp = stemp.replace("FRONTEND", 'https://aafrontend:8002')
             elif self.args.frontend_hash:
@@ -726,26 +770,16 @@ class CloudBuilder:
             # assume building the real deal? ...
             stemp = stemp.replace("BACKEND", 'http://fastapi:8080')
 
-        # landing is being hosted by the www service ...
-        if not self.args.node_landing and not self.args.static:
-            stlines = stemp.split('\n')
-            stlines = [x for x in stlines if '/apps/landing' not in x]
-            stemp = '\n'.join(stlines)
-
         if self.args.static:
             stlines = stemp.split('\n')
-            #stlines = [x for x in stlines if '/apps/landing' not in x]
-            #stlines = [x for x in stlines if '/apps/chrome' not in x]
-            #stlines = [x for x in stlines if '/apps/automation-analytics' not in x]
-            #stlines = [x for x in stlines if '/ansible/automation-analytics' not in x]
             for idx,x in enumerate(stlines):
-                if '/chrome' in x:
+                if '/chrome' in x and ('all' in self.args.static or 'chrome' in self.args.static):
                     stlines[idx] = x.replace('http://chrome', 'http://webroot')
-                elif 'beta/apps/landing' in x:
+                elif 'beta/apps/landing' in x and ('all' in self.args.static or 'landing' in self.args.static):
                     stlines[idx] = x.replace('http://landing_beta', 'http://webroot')
-                elif 'landing' in x:
+                elif 'landing' in x and ('all' in self.args.static or 'landing' in self.args.static):
                     stlines[idx] = x.replace('https://landing:8002', 'http://webroot')
-                elif 'analytics' in x and not '/api' in x:
+                elif 'analytics' in x and not '/api' in x and ('all' in self.args.static or 'tower-analytics-frontend' in self.args.static):
                     stlines[idx] = x.replace('FRONTEND', 'http://webroot')
 
             stemp = '\n'.join(stlines)
@@ -753,63 +787,6 @@ class CloudBuilder:
 
         with open(os.path.join(self.webroot, 'spandx.config.js'), 'w') as f:
             f.write(stemp)
-
-    def make_aa_frontend(self):
-        git_url = 'https://github.com/RedhatInsights/tower-analytics-frontend'
-        srcpath = os.path.join(self.checkouts_root, 'tower-analytics-frontend')
-        if not os.path.exists(srcpath):
-            cmd = f'git clone {git_url} {srcpath}'
-            res = subprocess.run(cmd, shell=True)
-            if res.returncode != 0:
-                raise Exception(f'cloning {git_url} failed')
-
-        # pre-install packages ...
-        if not self.args.skip_frontend_install:
-            node_modules = os.path.join(srcpath, 'node_modules')
-            if not os.path.exists(node_modules):
-                '''
-                cmd = [self.get_npm_path(), 'install']
-                print(cmd)
-                res = subprocess.run(cmd, cwd=srcpath)
-                if res.returncode != 0:
-                    raise Exception(f'npm install failed')
-                '''
-                NpmInstaller(self).run_install(srcpath)
-
-        if not self.args.static:
-            # fixup the dockerfile to add the github actions runner user
-            dfile = os.path.join(srcpath, 'Dockerfile')
-            #with open(dfile, 'r') as f:
-            #    ddata = f.read()
-            with open(dfile, 'w') as f:
-                f.write(NODE_RUNNER_DOCKERFILE)
-        else:
-            # static build that will land in the www root ...
-            if os.path.exists(os.path.join(srcpath, 'dist')):
-                shutil.rmtree(os.path.join(srcpath, 'dist'))
-
-            cmd = f'{self.get_npm_path()} run build'
-            print(cmd)
-            res = subprocess.run(cmd, cwd=srcpath, shell=True)
-            if res.returncode != 0:
-                raise Exception(f'npm build failed')
-
-            www = os.path.join(self.checkouts_root, 'www')
-            if os.path.exists(os.path.join(www, 'apps', 'automation-analytics')):
-                shutil.rmtree(os.path.join(www, 'apps', 'automation-analytics'))
-            shutil.copytree(
-                os.path.join(srcpath, 'dist'),
-                os.path.join(www, 'apps', 'automation-analytics')
-            )
-            if os.path.exists(os.path.join(www, 'ansible')):
-                shutil.rmtree(os.path.join(www, 'ansible'))
-            os.makedirs(os.path.join(www, 'ansible'))
-            cmd = f"ln -s ../apps/automation-analytics automation-analytics"
-            res = subprocess.run(cmd, cwd=os.path.join(www, 'ansible'), shell=True)
-            if res.returncode != 0:
-                raise Exception(f'symlinking failed')
-
-            #import epdb; epdb.st()
 
     def make_aa_backend(self):
 
@@ -868,14 +845,6 @@ class CloudBuilder:
         if not os.path.exists(apps_path):
             os.makedirs(apps_path)
 
-        '''
-        # apps/chrome should point at the chrome build path
-        if not os.path.exists(os.path.join(apps_path, 'chrome')):
-            cmd = f'ln -s ../../{chrome_src} chrome'
-            print(cmd)
-            subprocess.run(cmd, cwd=apps_path, shell=True)
-        '''
-
         # get index.html and make it point at the right chrome css file ...
         if not os.path.exists(os.path.join(self.webroot, 'index.html')):
             cmd = 'curl -o index.html https://cloud.redhat.com'
@@ -892,194 +861,6 @@ class CloudBuilder:
         dst = os.path.join(self.webroot, 'silent-check-sso.html')
         if not os.path.exists(dst):
             os.link(ssof, dst)
-
-    def make_landing(self):
-        # clone it
-        repo = 'https://github.com/RedHatInsights/landing-page-frontend'
-        srcpath = os.path.join(self.checkouts_root, 'landing-page-frontend')
-
-        if not os.path.exists(srcpath):
-            if os.path.exists(srcpath):
-                shutil.rmtree(srcpath)
-            cmd = f'git clone {repo} {srcpath}'
-            cmd = cmd.split()
-            print(cmd)
-            res = subprocess.run(cmd)
-            if res.returncode != 0:
-                raise Exception(f'git clone failed')
-
-        # add a container start target so it will bind to 0.0.0.0
-        pfile = os.path.join(srcpath, 'package.json')
-        with open(pfile, 'r') as f:
-            pdata = f.read()
-        if 'start:container' not in pdata:
-            plines = pdata.split('\n')
-            pix = None
-            for idx,x in enumerate(plines):
-                if '"start":' in x:
-                    pix = idx
-            nl = plines[pix][:]
-            nl = nl.replace('start', 'start:container')
-            nl = nl.replace('webpack-dev-server', 'webpack-dev-server --host 0.0.0.0 ')
-            plines.insert(pix+1, nl)
-            with open(pfile, 'w') as f:
-                f.write('\n'.join(plines))
-
-        # kill the hashed filenames ...
-        cfile = os.path.join(srcpath, 'config', 'base.webpack.config.js')
-        with open(cfile, 'r') as f:
-            cdata = f.read()
-        if '.[hash]' in cdata:
-            cdata = cdata.replace('.[hash]', '')
-            with open(cfile, 'w') as f:
-                f.write(cdata)
-
-        # kill the /beta prefix ...
-        cfg = os.path.join(srcpath, 'config', 'webpack.common.js')
-        with open(cfg, 'r') as f:
-            cdata = f.read()
-        cdata = cdata.replace('/beta/apps', '/apps')
-        with open(cfg, 'w') as f:
-            f.write(cdata)
-
-        nm = os.path.join(srcpath, 'node_modules')
-        if not os.path.exists(nm):
-            NpmInstaller(self).run_install(srcpath)
-
-        if not os.path.exists(os.path.join(srcpath, 'dist', 'index.html')):
-            NpmBuilder(self).run_build(srcpath)
-
-        # Are we going to run this is a service or are we going to host it with nginx?
-        if not self.args.node_landing:
-
-            www = os.path.join(self.checkouts_root, 'www')
-            apppath = os.path.join(www, 'apps', 'landing')
-            if os.path.exists(apppath):
-                shutil.rmtree(apppath)
-            shutil.copytree(os.path.join(srcpath, 'dist'), apppath)
-
-    def make_chrome(self, build=False, reset=True, set_jwt=True, fix=True):
-
-        # clone it
-        repo = 'https://github.com/RedHatInsights/insights-chrome'
-        srcpath = os.path.join(self.checkouts_root, 'insights-chrome')
-
-        if not os.path.exists(srcpath):
-            if os.path.exists(srcpath):
-                shutil.rmtree(srcpath)
-            cmd = f'git clone {repo} {srcpath}'
-            cmd = cmd.split()
-            print(cmd)
-            res = subprocess.run(cmd)
-            if res.returncode != 0:
-                raise Exception(f'git clone failed')
-
-        # reset the source
-        if reset:
-            cmd = f'git reset --hard'
-            cmd = cmd.split()
-            print(cmd)
-            res = subprocess.run(cmd, cwd=srcpath)
-            if res.returncode != 0:
-                raise Exception('git reset failed')
-
-        # set sso url(s) ...
-        if set_jwt:
-            self.set_chrome_jwt_constants()
-
-        '''
-        # install pkgs from cache or from npm
-        nm = os.path.join(self.cache_root, 'chrome_node_modules')
-        if not os.path.exists(nm):
-            cmd = ['npm', 'install']
-            print(cmd)
-            subprocess.run(cmd, cwd=srcpath)
-            shutil.copytree(os.path.join(srcpath, 'node_modules'), nm)
-        else:
-            print(f'cp -Rp {nm} -> {srcpath}/node_modules')
-            #shutil.copytree(nm, os.path.join(srcpath, 'node_modules'))
-            subprocess.run(['cp', '-Rp', os.path.abspath(nm), 'node_modules'], cwd=srcpath)
-            #print(f'ln -s {nm} {srcpath}/node_modules')
-            #subprocess.run(['ln', '-s', os.path.abspath(nm), 'node_modules'], cwd=srcpath)
-        '''
-        nm = os.path.join(srcpath, 'node_modules')
-        if not os.path.exists(nm) and build:
-            '''
-            cmd = [self.get_npm_path(), 'install']
-            print(cmd)
-            res = subprocess.run(cmd, cwd=srcpath)
-            if res.returncode != 0:
-                raise Exception('npm install failed')
-            '''
-            NpmInstaller(self).run_installer(srcpath)
-
-        # build the src
-        if os.path.exists(os.path.join(srcpath, 'build')) and build:
-            shutil.rmtree(os.path.join(srcpath, 'build'))
-        if not os.path.exists(os.path.join(srcpath, 'build')) and build:
-            res = subprocess.run([self.get_npm_path(), 'run', 'build'], cwd=srcpath)
-            if res.returncode != 0:
-                raise Exception('npm build failed')
-
-        # node_modules -must- be served from the build root
-        if not os.path.exists(os.path.join(srcpath, 'build', 'node_modules')):
-            cmd = 'ln -s ../node_modules node_modules'
-            res = subprocess.run(cmd, cwd=os.path.join(srcpath, 'build'), shell=True)
-            if res.returncode != 0:
-                raise Exception('node_modules symlinking failed')
-
-        # make a shim for /apps/chrome to build
-        apps = os.path.join(srcpath, 'apps')
-        if not os.path.exists(apps):
-            os.makedirs(apps)
-        if not os.path.exists(os.path.join(apps, 'chrome')):
-            cmd = 'ln -s ../build chrome'
-            res = subprocess.run(cmd, cwd=apps, shell=True)
-            if res.returncode != 0:
-                raise Exception('build symlinking failed')
-
-        bpath = os.path.join(srcpath, 'beta')
-        if not os.path.exists(bpath):
-            os.makedirs(bpath)
-        if not os.path.exists(os.path.join(bpath, 'apps')):
-            cmd = 'ln -s ../apps apps'
-            res = subprocess.run(cmd, cwd=bpath, shell=True)
-            if res.returncode != 0:
-                raise Exception('apps symlinking failed')
-
-        if fix:
-            self.fix_chrome()
-
-    def set_chrome_jwt_constants(self):
-        # src/insights-chrome/src/js/jwt/constants.js
-        srcpath = os.path.join(self.checkouts_root, 'insights-chrome')
-        constants_path = os.path.join(srcpath, 'src', 'js', 'jwt', 'constants.js')
-        with open(constants_path, 'r') as f:
-            cdata = f.read()
-
-        cdata = cdata.replace('https://sso.redhat.com', self.keycloak)
-
-        with open(constants_path, 'w') as f:
-            f.write(cdata)
-
-    def fix_chrome(self):
-        srcpath = os.path.join(self.checkouts_root, 'insights-chrome')
-
-        # link the hashed css file to non-hashed
-        if os.path.exists(os.path.join(srcpath, 'build', 'chrome.css')):
-            os.remove(os.path.join(srcpath, 'build', 'chrome.css'))
-        cmd = 'ln -s chrome.*.css chrome.css'
-        res = subprocess.run(cmd, cwd=os.path.join(srcpath, 'build'), shell=True)
-        if res.returncode != 0:
-            raise Exception('chrome.css symlinking failed')
-
-        # link the hashed js file to non-hashed
-        if os.path.exists(os.path.join(srcpath, 'build', 'js', 'chrome.js')):
-            os.remove(os.path.join(srcpath, 'build', 'js', 'chrome.js'))
-        cmd = 'ln -s chrome.*.js chrome.js'
-        res = subprocess.run(cmd, cwd=os.path.join(srcpath, 'build', 'js'), shell=True)
-        if res.returncode != 0:
-            raise Exception('chrome.js symlinking failed')
 
     def make_rbac(self):
         srcpath = os.path.join(self.checkouts_root, 'rbac')
@@ -1120,18 +901,29 @@ def main():
     parser.add_argument('--backend_hash', help="what aa backend hash to use")
     parser.add_argument('--backend_path', help="path to an aa backend checkout")
     parser.add_argument('--backend_mock', action='store_true', help="use the mock backend")
-    parser.add_argument('--skip_chrome', action='store_true')
-    parser.add_argument('--skip_landing', action='store_true')
-    parser.add_argument('--skip_chrome_reset', action='store_true')
-    parser.add_argument('--skip_chrome_build', action='store_true')
-    parser.add_argument('--skip_frontend_install', action='store_true')
-    parser.add_argument('--node_landing', action='store_true')
-    parser.add_argument('--static', action='store_true', help="do not use webpack dev server where possible")
+    #parser.add_argument('--skip_chrome', action='store_true')
+    #parser.add_argument('--skip_landing', action='store_true')
+    #parser.add_argument('--skip_chrome_reset', action='store_true')
+    #parser.add_argument('--skip_chrome_build', action='store_true')
+    #parser.add_argument('--skip_frontend_install', action='store_true')
+    #parser.add_argument('--node_landing', action='store_true')
+
+    #parser.add_argument('--static', action='store_true', help="do not use webpack dev server where possible")
+    parser.add_argument(
+        '--static',
+        action='append',
+        default=[],
+        choices=['all', 'chrome', 'landing', 'automation-analytics'],
+        help="do not use webpack dev server where possible"
+    )
+
     parser.add_argument('--integration', action='store_true')
     parser.add_argument('--puppeteer', action='store_true')
     parser.add_argument('--cypress', action='store_true')
     parser.add_argument('--cypress_debug', action='store_true')
     args = parser.parse_args()
+
+    HostVerifier(args)
 
     logger.info("starting cloudbuilder")
     cbuilder = CloudBuilder(args=args)
