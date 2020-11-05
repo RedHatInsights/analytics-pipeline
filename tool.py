@@ -120,6 +120,21 @@ FLASKREQUIREMENTS = '''flask
 cryptography
 '''
 
+def get_npm_path():
+    # /home/vagrant/.nvm/versions/node/v10.15.3/bin/npm
+    #npath = os.path.expanduser('~/.nvm/versions/node/v10.15.3/bin/npm')
+    res = subprocess.run('which npm', shell=True, stdout=subprocess.PIPE)
+    npath = res.stdout.decode('utf-8').strip()
+    return npath
+
+
+def get_node_path():
+    # /home/vagrant/.nvm/versions/node/v10.15.3/bin/npm
+    #npath = os.path.expanduser('~/.nvm/versions/node/v10.15.3/bin/npm')
+    res = subprocess.run('which node', shell=True, stdout=subprocess.PIPE)
+    npath = res.stdout.decode('utf-8').strip()
+    return npath
+
 
 class HostVerifier:
 
@@ -128,7 +143,14 @@ class HostVerifier:
         self.run()
 
     def run(self):
+        self.verify_python()
         self.verify_docker()
+        self.verify_npm()
+
+    def verify_python(self):
+        major = sys.version_info.major
+        if major != 3:
+            raise Exception('python3 must be used for this stack')
 
     def verify_docker(self):
         cmd = 'which docker'
@@ -136,11 +158,21 @@ class HostVerifier:
         if res.returncode != 0:
             raise Exception("docker was not found in your PATH")
 
+        dockerbin = res.stdout.decode('utf-8').strip()
+        res = subprocess.run(f'{dockerbin} --version', shell=True, stdout=subprocess.PIPE)
+        version = res.stdout.decode('utf-8').split()[2]
+        vmajor = int(version.split('.')[0])
+        if vmajor < 19:
+            raise Exception('docker version needs to be >= 19')
+
         if platform.system().lower() == 'darwin':
             settings_path = '~/Library/Group Containers/group.com.docker/settings.json'
             settings_path = os.path.expanduser(settings_path)
             with open(settings_path, 'r') as f:
                 settings = json.loads(f.read())
+
+            if 'filesharingDirectories' not in settings:
+                raise Exception('dockerd is not configured to share any folders')
 
             shares = settings['filesharingDirectories']
             if shares != ['/Users']:
@@ -149,6 +181,25 @@ class HostVerifier:
 
             if settings['memoryMiB'] < 4000:
                 raise Exception("the docker service needs at least 4GB of RAM")
+
+    def verify_npm(self):
+        npm = get_npm_path()
+        if not npm:
+            raise Exception('npm is not in your path, please install and configure NVM')
+
+        res = subprocess.run(f'{npm} --version', shell=True, stdout=subprocess.PIPE)
+        version = res.stdout.decode('utf-8').strip()
+
+        node = get_node_path()
+        if not npm:
+            raise Exception('node is not in your path, please install and configure NVM')
+
+        res = subprocess.run(f'{node} --version', shell=True, stdout=subprocess.PIPE)
+        version = res.stdout.decode('utf-8').strip()
+        vparts = version.split('.')
+        vmajor = int(vparts[0].replace('v', ''))
+        if vmajor < 10:
+            raise Exception(f'found node version {version} which is not >= 10')
 
 
 class GenericFrontendComponent:
@@ -549,11 +600,8 @@ class CloudBuilder:
         if platform.system().lower() == 'darwin':
             ds.pop('networks', None)
 
-        if True:
-            ds['services']['kcadmin'].pop('networks', None)
-            ds['services']['sso.local.redhat.com'].pop('networks', None)
-            ds['services']['sso.local.redhat.com'].pop('depends_on', None)
-
+        # Add squid for the mac users who can't directly connect to containers
+        if not self.args.integration:
             squid_logs = os.path.join(self.checkouts_root, 'squid', 'logs')
             squid_conf = os.path.join(self.checkouts_root, 'squid', 'conf')
             if not os.path.exists(squid_logs):
@@ -567,6 +615,11 @@ class CloudBuilder:
                     f"./{squid_logs}:/var/log/squid",
                 ]
             }
+
+        if True:
+            ds['services']['kcadmin'].pop('networks', None)
+            ds['services']['sso.local.redhat.com'].pop('networks', None)
+            ds['services']['sso.local.redhat.com'].pop('depends_on', None)
 
             pf = copy.deepcopy(ds['services']['insights_proxy'])
             pf['container_name'] = 'prod.foo.redhat.com'
