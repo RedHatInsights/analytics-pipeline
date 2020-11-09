@@ -42,6 +42,27 @@ the backend returns large amounts of data? You can find out.
     export HTTPS_PROXY=http://localhost:3128
     ./node_modules/.bin/cypress run --no-exit --browser firefox --spec cypress/integration/automation-analytics.js
 
+### long running stack suitable for frontend and cypress dev with a real backend
+
+**Make sure you have a functioning docker (not podman) setup. Ubuntu virtual machines are great for this.**
+    virtualenv --python=$(which python3) venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+    pip install --upgrade docker-compose
+    make stack_allow_restart
+
+    # open a second terminal after the stack has finished starting
+    make init
+
+    # open a third terminal
+    cd srv/integration_tests
+    npm install
+    #npm install cypress
+    #npm run tests:integration:cypress-windowed
+    export HTTP_PROXY=http://localhost:3128
+    export HTTPS_PROXY=http://localhost:3128
+    ./node_modules/.bin/cypress run --no-exit --browser firefox --spec cypress/integration/automation-analytics.js
+
 ## Components
 
 ### tool.py

@@ -26,6 +26,10 @@ stack: clean
 	python3 tool.py --static=chrome --static=landing
 	 $(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_OPTS)
 
+stack_allow_restart: clean
+	python3 tool.py --static=chrome --static=landing
+	$(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_RESTART_OPTS)
+
 stack_backend_mock: clean
 	python3 tool.py --backend_mock --static=chrome --static=landing
 	cat genstack.yml
@@ -54,10 +58,6 @@ stack_ci_cypress_debug: clean
 	which python3
 	python3 tool.py --backend_mock --static=all --integration --cypress_debug
 	$(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
-
-stack_allow_restart: clean
-	python3 tool.py --static=chrome --static=landing
-	$(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_RESTART_OPTS)
 
 ########################################
 init: migrations data

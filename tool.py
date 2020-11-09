@@ -482,7 +482,7 @@ class CloudBuilder:
 
         self.make_spandx()
         #self.make_aa_frontend()
-        #self.make_aa_backend()
+        self.make_aa_backend()
         self.make_www()
         self.make_entitlements()
         self.make_rbac()
