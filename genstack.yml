@@ -1,5 +1,10 @@
 ---
 version: '3'
+networks:
+    ssonet:
+        ipam:
+            config:
+                - subnet: 172.23.0.0/24
 volumes:
     local_postgres_data: {}
     local_postgres_data_backups: {}
@@ -87,21 +92,3 @@ services:
         volumes:
             - ./srv/aa_backend_mock:/app
         command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
-    integration:
-        container_name: integration
-        image: aa_integration:latest
-        build:
-            context: ./srv/integration_tests
-            dockerfile: Dockerfile.cypress
-        volumes:
-            - ./srv/integration_tests:/app:rw
-        user: node
-        entrypoint: ''
-        depends_on:
-            - sso.local.redhat.com
-            - kcadmin
-            - aabackend
-        command: /bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s cypress run --headless --browser chrome --spec cypress/integration/automation-analytics.js"
-        ipc: host
-        cap_add:
-            - SYS_ADMIN

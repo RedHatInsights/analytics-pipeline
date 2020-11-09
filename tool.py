@@ -3,6 +3,7 @@
 import argparse
 import copy
 import getpass
+import glob
 import json
 import os
 import shutil
@@ -202,6 +203,20 @@ class HostVerifier:
             raise Exception(f'found node version {version} which is not >= 10')
 
 
+''' When npm install was run from the mac but is being used by webpack devserver in linux ...
+| Child mini-css-extract-plugin node_modules/css-loader/dist/cjs.js!node_modules/sass-loader/dist/cjs.js!node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css:                                                                                                                                                
+|     Entrypoint mini-css-extract-plugin = *                                                                                                                                                                                                                                                                                                                      
+|     [./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css] 1.18 KiB {mini-css-extract-plugin} [built] [failed] [1 error]                                                                                                     
+|                                                                                                                                                                  
+|     ERROR in ./node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css (./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css)                                               
+|     Module build failed (from ./node_modules/sass-loader/dist/cjs.js):                                                                                           
+|     Error: Missing binding /app/node_modules/node-sass/vendor/linux-x64-64/binding.node                                                                          
+|     Node Sass could not find a binding for your current environment: Linux 64-bit with Node.js 10.x                                                              
+|                                                                                                                                                                                                                                                                                                                                                                 
+|     Found bindings for the following environments:                                                                                                                                                                                                                                                                                                              
+|       - OS X 64-bit with Node.js 10.x   
+'''
+
 class GenericFrontendComponent:
 
     _installed = False
@@ -235,13 +250,6 @@ class GenericFrontendComponent:
         return self._built
 
 
-    def get_npm_path(self):
-        # /home/vagrant/.nvm/versions/node/v10.15.3/bin/npm
-        #npath = os.path.expanduser('~/.nvm/versions/node/v10.15.3/bin/npm')
-        res = subprocess.run('which npm', shell=True, stdout=subprocess.PIPE)
-        npath = res.stdout.decode('utf-8').strip()
-        return npath
-
     def clone(self):
         if not os.path.exists(self.srcpath):
             logger.info(f"clone {self.repo}")
@@ -265,10 +273,22 @@ class GenericFrontendComponent:
         if os.path.exists(os.path.join(self.srcpath, 'node_modules')):
             install = False
 
+        # make sure node has the right arch bindings for the location this app
+        # is going to run from if it's going to be run with webpack devserver ...
+        if 'all' not in self.cb.args.static and self.www_app_name not in self.cb.args.static:
+            nmpath = os.path.join(self.srcpath, 'node_modules')
+            vendor_path = os.path.join(nmpath, 'node-sass', 'vendor')
+            arches = glob.glob(f'{vendor_path}/*')
+            arches = [os.path.basename(x) for x in arches]
+
+            if arches == ['darwin-x64-64']:
+                logger.warning(f'deleting {nmpath} because it has the wrong arch for linux')
+                shutil.rmtree(nmpath)
+
         if not install:
             return
 
-        cmd = ' '.join([self.get_npm_path(), 'install'])
+        cmd = ' '.join([get_npm_path(), 'install'])
         logger.info(f'installing npm deps for {self.name}') 
         logger.info(cmd)
         res = subprocess.run(cmd, shell=True, cwd=self.srcpath)
@@ -298,7 +318,7 @@ class GenericFrontendComponent:
         if not build:
             return
 
-        cmd = ' '.join([self.get_npm_path(), 'run', 'build'])
+        cmd = ' '.join([get_npm_path(), 'run', 'build'])
         logger.info(f'building static version of {self.name}') 
         logger.info(cmd)
         res = subprocess.run(cmd, shell=True, cwd=self.srcpath)
@@ -325,6 +345,7 @@ class GenericFrontendComponent:
             logger.info(f'deploy {src} -> {dst}')
             shutil.copytree(src, dst)
         '''
+        pass
 
     def postdeploy(self):
         pass
@@ -786,13 +807,6 @@ class CloudBuilder:
             svc['depends_on'].remove('aafrontend')
 
         return svc
-
-    def get_npm_path(self):
-        # /home/vagrant/.nvm/versions/node/v10.15.3/bin/npm
-        #npath = os.path.expanduser('~/.nvm/versions/node/v10.15.3/bin/npm')
-        res = subprocess.run('which npm', shell=True, stdout=subprocess.PIPE)
-        npath = res.stdout.decode('utf-8').strip()
-        return npath
 
     def make_spandx(self):
 
