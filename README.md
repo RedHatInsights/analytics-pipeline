@@ -27,6 +27,7 @@ the backend returns large amounts of data? You can find out.
 ### long running stack suitable for frontend and cypress dev
 
 **Make sure you have a functioning docker (not podman) setup. Ubuntu virtual machines are great for this.**
+
     virtualenv --python=$(which python3) venv
     source venv/bin/activate
     pip install -r requirements.txt
@@ -45,6 +46,7 @@ the backend returns large amounts of data? You can find out.
 ### long running stack suitable for frontend and cypress dev with a real backend
 
 **Make sure you have a functioning docker (not podman) setup. Ubuntu virtual machines are great for this.**
+
     virtualenv --python=$(which python3) venv
     source venv/bin/activate
     pip install -r requirements.txt
