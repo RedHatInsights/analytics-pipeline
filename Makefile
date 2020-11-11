@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 
+PYTHON_BIN = venv/bin/python3
 DOCKER_COMPOSE_BIN = COMPOSE_HTTP_TIMEOUT=1000 venv/bin/docker-compose
 DOCKER_RESTART_OPTS = --no-color -V --force-recreate --always-recreate-deps --attach-dependencies
 DOCKER_OPTS = $(DOCKER_RESTART_OPTS) --abort-on-container-exit
@@ -7,8 +8,8 @@ DOCKER_OPTS = $(DOCKER_RESTART_OPTS) --abort-on-container-exit
 clean:
 	rm -rf srv/integration_tests/cypress/screenshots/*
 	rm -rf srv/integration_tests/cypress/videos/*
-	docker-compose -f genstack.yml down || echo "docker-compose down failed"
-	docker-compose -f genstack.yml rm -f || echo "docker-compose rm failed"
+	$(DOCKER_COMPOSE_BIN) -f genstack.yml down || echo "docker-compose down failed"
+	$(DOCKER_COMPOSE_BIN) -f genstack.yml rm -f || echo "docker-compose rm failed"
 	docker volume prune -f
 	docker volume ls | fgrep _local_ | awk '{print $2}' | xargs -I {} docker volume rm -f {}
 	if [[ -d srv/tower-analytics-backend ]]; then sudo rm -rf srv/tower-analytics-backend/local_*_data; fi;
@@ -23,29 +24,29 @@ clean_node_modules:
 	rm -rf srv/*/node_modules
 
 stack: clean
-	python3 tool.py --static=chrome --static=landing
+	$(PYTHON_BIN) tool.py --static=chrome --static=landing
 	 $(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_OPTS)
 
 stack_allow_restart: clean
-	python3 tool.py --static=chrome --static=landing
+	$(PYTHON_BIN) tool.py --static=chrome --static=landing
 	$(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_RESTART_OPTS)
 
 stack_backend_mock: clean
-	python3 tool.py --backend_mock --static=chrome --static=landing
+	$(PYTHON_BIN) tool.py --backend_mock --static=chrome --static=landing
 	cat genstack.yml
 	$(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_OPTS)
 
 stack_mock_static: clean
-	python3 tool.py --backend_mock --static=all
+	$(PYTHON_BIN) tool.py --backend_mock --static=all
 	cat genstack.yml
 	$(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_OPTS)
 
 stack_ci_puppeteer: clean
-	python3 tool.py --backend_mock --static=all --integration --puppeteer
+	$(PYTHON_BIN) tool.py --backend_mock --static=all --integration --puppeteer
 	$(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
 
 stack_ci_cypress: clean
-	python3 tool.py --backend_mock --static=all --integration --cypress
+	$(PYTHON_BIN) tool.py --backend_mock --static=all --integration --cypress
 	$(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
 
 stack_ci_cypress_debug: clean
@@ -56,7 +57,7 @@ stack_ci_cypress_debug: clean
 	if [[ "$(shell uname)" == "Darwin" ]]; then echo "$(shell sysctl -n machdep.cpu.brand_string)"; else cat /proc/cpuinfo; fi;
 	docker --version
 	which python3
-	python3 tool.py --backend_mock --static=all --integration --cypress_debug
+	$(PYTHON_BIN) tool.py --backend_mock --static=all --integration --cypress_debug
 	$(DOCKER_COMPOSE_BIN) -f genstack.yml up $(DOCKER_RESTART_OPTS) --exit-code-from integration
 
 ########################################
