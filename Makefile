@@ -71,3 +71,6 @@ data:
 migrations:
 	$(DOCKER_COMPOSE_BIN) -f genstack.yml exec fastapi ./entrypoint ./manage.py run_report_migrations $*
 
+rollups:
+	$(DOCKER_COMPOSE_BIN) -f genstack.yml restart refresher
+	$(DOCKER_COMPOSE_BIN) -f genstack.yml restart rollups_processor
