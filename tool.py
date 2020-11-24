@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 import platform
 import yaml
@@ -465,6 +466,10 @@ class CloudBuilder:
         if not os.path.exists(self.webroot):
             os.makedirs(self.webroot)
 
+        if self.args.awx:
+            self.build_awx()
+            #sys.exit(0)
+
         self.frontend_services = []
         for svc_name in ['insights-chrome', 'landing-page-frontend', 'tower-analytics-frontend']:
             src_path = os.path.join(self.checkouts_root, svc_name)
@@ -494,6 +499,106 @@ class CloudBuilder:
 
         self.create_compose_file()
 
+    def build_awx(self):
+        git_url = 'https://github.com/ansible/awx'
+        srcdir = os.path.join(self.checkouts_root, 'awx')
+        if not os.path.exists(srcdir):
+            cmd = f'git clone {git_url} {srcdir}'
+            res = subprocess.run(cmd, shell=True)
+            if res.returncode != 0:
+                raise Exception(f'cloning {git_url} failed')
+        
+        # RESET ALL CHANGES
+        cmd = 'git reset --hard'
+        res = subprocess.run(cmd, cwd=srcdir, shell=True)
+        if res.returncode != 0:
+            raise Exception(f'git reset failed')
+
+        # COPY THE SETTINGS FILE ...
+        shutil.copy(
+            os.path.join(srcdir, 'awx/settings/local_settings.py.docker_compose'),
+            os.path.join(srcdir, 'awx/settings/local_settings.py')
+        )
+
+        # PATCH THE ANALYTICS GATHERING CODE TO SKIP LICENSE CHECK ...
+        core_file = os.path.join(srcdir, 'awx/main/analytics/core.py')
+        with open(core_file, 'r') as f:
+            code = f.read()
+        code = code.replace('\r\n', '\n')
+        code = code.replace('def _valid_license():', 'def _valid_license():\n    return True\n')
+        with open(core_file, 'w') as f:
+            f.write(code)
+
+        # BUILD THE UI ...
+        makefile = os.path.join(srcdir, 'Makefile')
+        node_modules_dir = os.path.join(srcdir, 'awx', 'ui', 'node_modules')
+        static_dir = os.path.join(srcdir, 'awx', 'ui', 'static')
+        if not os.path.exists(node_modules_dir) or not os.path.exists(static_dir):
+
+            # $(NPM_BIN) --prefix awx/ui run build-devel -- $(MAKEFLAGS)
+            with open(makefile, 'r') as f:
+                makedata = f.read()
+            makedata = makedata.replace(
+                '$(NPM_BIN) --prefix awx/ui run build-devel -- $(MAKEFLAGS)',
+                '$(NPM_BIN) --prefix awx/ui run build-devel'
+            )
+            with open(makefile, 'w') as f:
+                f.write(makedata)
+
+            cmd = 'make clean-ui'
+            logger.info(cmd)
+            res = subprocess.run(cmd, cwd=srcdir, shell=True)
+            if res.returncode != 0:
+                raise Exception(f'ui clean failed')
+
+            cmd = 'make ui-devel'
+            logger.info(cmd)
+            #import epdb; epdb.st()
+            res = subprocess.run(cmd, cwd=srcdir, shell=True)
+            if res.returncode != 0:
+                raise Exception(f'ui build failed')
+
+        '''
+        composefn = os.path.join(srcdir, 'tools', 'docker-compose.yml')
+        with open(composefn, 'r') as f:
+            compose = f.read()
+
+        # GIT BRANCH
+        cmd = f'cd {srcdir} && git rev-parse --abbrev-ref HEAD'
+        res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+        gbranch = res.stdout.decode('utf-8').strip()
+        compose = compose.replace('${TAG}', gbranch)
+
+        # CURRENT USER
+        cmd = 'id -u'
+        res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+        uid = res.stdout.decode('utf-8').strip()
+        compose = compose.replace('${CURRENT_UID}', '"' + uid + '"')
+
+        # OS
+        cmd = 'docker info | grep "Operatiing System"'
+        res = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE)
+        osname = res.stdout.decode('utf-8').strip()
+
+        # TAG
+        tag_base = 'gcr.io/ansible-tower-engineering'
+        compose = compose.replace('${DEV_DOCKER_TAG_BASE}', tag_base)
+
+        # VOLUMES 
+        abs_src = os.path.abspath(srcdir)
+        compose = compose.replace('../:/awx_devel', abs_src + '/:/awx_devel')
+        compose = compose.replace('../awx/', os.path.join(abs_src, 'awx') + '/')
+        compose = compose.replace('./docker-compose/', os.path.join(abs_src, 'docker-compose') + '/')
+        compose = compose.replace('./redis/', os.path.join(abs_src, 'redis') + '/')
+        #compose = compose.replace('"awx_db:', os.path.join(abs_src, '"awx_db'))
+        #import epdb; epdb.st()
+
+        with open(composefn, 'w') as f:
+            f.write(compose)
+        '''
+
+        #sys.exit(1)
+
     def get_node_container_user(self):
         '''github actions create bind moundts as root and the node user can't write'''
 
@@ -509,13 +614,6 @@ class CloudBuilder:
     def create_compose_file(self):
         ds = {
             'version': '3',
-            'networks': {
-                'ssonet': {
-                    'ipam': {
-                        'config': [{'subnet': '172.23.0.0/24'}]
-                    }
-                }
-            },
             'volumes': {
                 'local_postgres_data': {},
                 'local_postgres_data_backups': {},
@@ -693,6 +791,21 @@ class CloudBuilder:
 
         if self.args.integration:
             ds['services']['integration'] = self.get_integration_compose()
+
+
+        # add the cloudnet network to all of the services ...
+        #for k,v in ds['services'].items():
+        #    ds['services'][k]['networks'] = ['awxcompose_default']
+        #import epdb; epdb.st()
+
+        if self.args.awx:
+            ds['networks'] = {
+                'default': {
+                    'external': {
+                        'name': 'tools_default',
+                    }
+                }
+            }
 
         yaml = YAML(typ='rt', pure=True)
         yaml.preserve_quotes = False
@@ -959,23 +1072,13 @@ class CloudBuilder:
 def main():
 
     parser = argparse.ArgumentParser()
-    #parser.add_argument('--frontend', choices=['local', 'container'], default='local')
     parser.add_argument('--frontend_address', help="use local or remote address for frontend")
     parser.add_argument('--frontend_hash', help="what aa frontend hash to use")
     parser.add_argument('--frontend_path', help="path to an aa frontend checkout")
-    #parser.add_argument('--backend', choices=['local', 'container', 'mock_container'], default='local')
     parser.add_argument('--backend_address', help="use local or remote address for backend")
     parser.add_argument('--backend_hash', help="what aa backend hash to use")
     parser.add_argument('--backend_path', help="path to an aa backend checkout")
     parser.add_argument('--backend_mock', action='store_true', help="use the mock backend")
-    #parser.add_argument('--skip_chrome', action='store_true')
-    #parser.add_argument('--skip_landing', action='store_true')
-    #parser.add_argument('--skip_chrome_reset', action='store_true')
-    #parser.add_argument('--skip_chrome_build', action='store_true')
-    #parser.add_argument('--skip_frontend_install', action='store_true')
-    #parser.add_argument('--node_landing', action='store_true')
-
-    #parser.add_argument('--static', action='store_true', help="do not use webpack dev server where possible")
     parser.add_argument(
         '--static',
         action='append',
@@ -983,11 +1086,12 @@ def main():
         choices=['all', 'chrome', 'landing', 'automation-analytics'],
         help="do not use webpack dev server where possible"
     )
-
     parser.add_argument('--integration', action='store_true')
     parser.add_argument('--puppeteer', action='store_true')
     parser.add_argument('--cypress', action='store_true')
     parser.add_argument('--cypress_debug', action='store_true')
+    parser.add_argument('--awx', action='store_true')
+
     args = parser.parse_args()
 
     HostVerifier(args)

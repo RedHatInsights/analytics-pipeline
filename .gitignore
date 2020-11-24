@@ -23,3 +23,6 @@ srv/www/apps
 srv/squid/logs
 
 .DS_Store
+
+srv/awx.var/pgdocker
+srv/awx.var/awxcompose

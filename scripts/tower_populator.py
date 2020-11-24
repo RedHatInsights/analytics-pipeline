@@ -57,6 +57,8 @@ def vagrant_scp_to(boxpath, src, dst):
 
     print(basecmd)
     res = subprocess.run(basecmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if res.returncode != 0:
+        raise Exception(f'{basecmd} failed: {res.stderr.decode("utf-8")}')
     return (res.returncode, res.stdout.decode('utf-8'), res.stderr.decode('utf-8'))
 
 
@@ -84,6 +86,9 @@ def vagrant_ssh(boxpath, cmd):
 
 
 def parse_cli_listing(stdout):
+    if not stdout.strip():
+        return []
+    
     lines = stdout.split('\n')
     header = lines[0].rstrip()
     titles = lines[1].rstrip()
@@ -135,9 +140,9 @@ class Tower:
     def __init__(self, boxpath):
         self.boxpath = boxpath
         #self.check_ssh()
-        #self.get_admin_password()
-        #self.install_towercli()
-        #self.towercli_login()
+        self.get_admin_password()
+        self.install_towercli()
+        self.towercli_login()
 
         self.make_inventory()
         self.make_hosts()
@@ -191,12 +196,16 @@ class Tower:
             thisname = thisname[::-1]
             inventories[thisid] = thisname
 
+        pprint(inventories)
+
         if 'test_inventory' not in inventories.values():
             cmd = f"tower-cli inventory create --name=test_inventory --organization=1"
             (rc, so, se) = vagrant_ssh(self.boxpath, cmd)
+            if rc != 0:
+                raise Exception('inventory create failed')
 
     def make_hosts(self):
-        (rc, so, se) = vagrant_ssh(self.boxpath, "tower-cli host list")
+        (rc, so, se) = vagrant_ssh(self.boxpath, "tower-cli host list --all-pages")
         lines = so.split('\n')
         lines = [x.strip() for x in lines if x.strip() and '=' not in x and 'name' not in x]
 
@@ -208,15 +217,19 @@ class Tower:
             invid = int(parts[2])
             hosts[thisid] = {'name': thisname, 'inventory_id': invid}
 
-        if len(hosts) == 1:
+        pprint(hosts)
+        hkeys = sorted(list(hosts.keys()))
+
+        if len(hosts) < 10000:
             inventories = self.get_inventories()
             ti = [x for x in inventories.items() if x[1] == 'test_inventory']
             ti = ti[0][0]
-            for x in range(0, 101):
+            for x in range(hkeys[-1], 10000):
                 thisname = f"host-{x}"
                 cmd = f"tower-cli host create --name={thisname} --inventory={ti}"
-                pprint(vagrant_ssh(self.boxpath, cmd))
-                #import epdb; epdb.st()
+                (rc, so, se) = vagrant_ssh(self.boxpath, cmd)
+                if rc != 0:
+                    raise Exception(se)
 
     def make_manual_project(self):
         (rc, so, se) = vagrant_ssh(self.boxpath, "tower-cli project list")
@@ -231,11 +244,12 @@ class Tower:
             cmd += " --force-on-exists"
             pprint(vagrant_ssh(self.boxpath, cmd))
 
-        (rc, so, se) = vagrant_ssh(self.boxpath, "ls -al /var/lib/awx/projects/test_project")
+        (rc, so, se) = vagrant_ssh(self.boxpath, "sudo chmod 777 /var/lib/awx/projects")
+        (rc, so, se) = vagrant_ssh(self.boxpath, "[ -d /var/lib/awx/projects/test_project ]")
         if rc != 0:
             (rc, so, se) = vagrant_ssh(self.boxpath, "sudo mkdir -p /var/lib/awx/projects/test_project")
             (rc, so, se) = vagrant_ssh(self.boxpath, "sudo chmod -R 777 /var/lib/awx/projects/test_project")
-        (rc, so, se) = vagrant_ssh(self.boxpath, "ls -al /var/lib/awx/projects/test_project/site.yml")
+        (rc, so, se) = vagrant_ssh(self.boxpath, "[ -f /var/lib/awx/projects/test_project/site.yml ]")
         if rc != 0:
             td = tempfile.mkdtemp()
             src = os.path.join(td, 'site.yml')
@@ -253,7 +267,11 @@ class Tower:
         if 'test_template' not in tnames:
             (rc, so, se) = vagrant_ssh(self.boxpath, "tower-cli inventory list")
             inventories = parse_cli_listing(so)
-            iid = [x['id'] for x in inventories if x['name'] == 'test_inventory'][0]
+            if inventories:
+                iid = [x['id'] for x in inventories if x['name'] == 'test_inventory'][0]
+            else:
+                raise Exception('NO INVENTORIES!')
+
             (rc, so, se) = vagrant_ssh(self.boxpath, "tower-cli project list")
             projects = parse_cli_listing(so)
             pid = [x['id'] for x in projects if x['name'] == 'test_project'][0]

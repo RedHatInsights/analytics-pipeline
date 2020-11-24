@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import datetime
 import os
 import json
+import subprocess
 
 import flask
 from flask import Flask
@@ -132,6 +134,31 @@ def je_options():
     with open('api_payloads/job_explorer_options_result.json', 'r') as f:
         data = json.loads(f.read())
     return jsonify(data)
+
+
+@app.route('/ingress/v1/upload', methods=['POST'])
+def upload_bundle():
+    bdir = os.path.join('/var', 'tower', 'bundles')
+    ddir = os.path.join('/var', 'tower', 'data')
+    if not os.path.exists(bdir):
+        os.makedirs(bdir)
+    if not os.path.exists(ddir):
+        os.makedirs(ddir)
+
+    for fo in request.files.items():
+
+        # get the file ...
+        dst = os.path.join(bdir, datetime.datetime.now().isoformat() + "_" + fo[1].filename)
+        print(dst)
+        fo[1].save(dst)
+
+        # extract the file ...
+        bn = os.path.basename(dst).replace('.tar.gz', '')
+        edst = os.path.join(ddir, bn)
+        os.makedirs(edst)
+        subprocess.run(f'tar xzvf {dst}', cwd=edst, shell=True)
+
+    return jsonify({})
 
 
 if __name__ == '__main__':

@@ -1,0 +1,22 @@
+#!/usr/bin/env python
+
+import argparse
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', action='append')
+    parser.add_argument('--no-color', action='store_true')
+    parser.add_argument('-V', action='store_true')
+    parser.add_argument('--force-recreate', action='store_true')
+    parser.add_argument('--always-recreate-deps', action='store_true')
+    parser.add_argument('--attach-dependencies', action='store_true')
+
+    args = parser.parse_args()
+
+    import epdb; epdb.st()
+
+
+if __name__ == "__main__":
+    main()

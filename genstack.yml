@@ -1,10 +1,5 @@
 ---
 version: '3'
-networks:
-    ssonet:
-        ipam:
-            config:
-                - subnet: 172.23.0.0/24
 volumes:
     local_postgres_data: {}
     local_postgres_data_backups: {}
@@ -39,8 +34,6 @@ services:
             - ./srv/nginx.conf.d:/etc/nginx/conf.d
             - ./srv/insights-chrome/build:/usr/share/nginx/html/apps/chrome
             - ./srv/landing-page-frontend/dist:/usr/share/nginx/html/apps/landing
-            - ./srv/tower-analytics-frontend/dist:/usr/share/nginx/html/apps/automation-analytics
-            - ./srv/tower-analytics-frontend/dist:/usr/share/nginx/html/ansible/automation-analytics
         command:
             - nginx-debug
             - -g
@@ -61,6 +54,20 @@ services:
         volumes:
             - ./srv/rbac:/app
         command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
+    tower-analytics-frontend:
+        container_name: aafrontend
+        image: noderunner:latest
+        build:
+            context: ./srv/tower-analytics-frontend
+            dockerfile: Dockerfile
+        user: node
+        ports:
+            - 8002:8002
+        environment:
+            DEBUG: express:*
+        command: /bin/bash -c "cd /app && npm install && npm run start:container"
+        volumes:
+            - ./srv/tower-analytics-frontend:/app:rw
     squid:
         container_name: squid
         image: datadog/squid
@@ -82,13 +89,93 @@ services:
             - prod.foo.redhat.com:127.0.0.1
         volumes:
             - ./srv/www/spandx.config.js:/config/spandx.config.js
-    aabackend:
-        container_name: aabackend
-        image: python:3
+    fastapi:
         build:
-            context: ./srv/aa_backend_mock
-        environment:
-            API_SECURE: '1'
+            context: ./srv/tower-analytics-backend
+            dockerfile: ./Dockerfile
+            args:
+                SRC_MOUNT: /app
+        image: tower_analytics_backend
+        depends_on:
+            - postgres
         volumes:
-            - ./srv/aa_backend_mock:/app
-        command: /bin/bash -c "cd /app && pip install -r requirements.txt && python api.py"
+            - ./srv/tower-analytics-backend/:/app
+        env_file:
+            - ./srv/tower-analytics-backend/.envs/.local/.django
+            - ./srv/tower-analytics-backend/.envs/.local/.postgres
+        ports:
+            - 8004:8080
+        command: ./launcher
+        environment:
+            - ALLOW_DIRECT_BUNDLE_UPLOADS=yes
+            - DEBUG=true
+            - APP=fastapi
+            - DEV=1
+        container_name: fastapi
+    postgres:
+        build:
+            context: ./srv/tower-analytics-backend
+            dockerfile: ./compose/local/postgres/Dockerfile
+        ports:
+            - 15432:5432
+        image: tower_analytics_backend_production_postgres
+        volumes:
+            - ./srv/tower-analytics-backend/local_postgres_data:/var/lib/postgresql/data
+            - ./srv/tower-analytics-backend/local_postgres_data_backups:/backups
+        env_file:
+            - ./srv/tower-analytics-backend/.envs/.local/.postgres
+        container_name: postgres
+    kafka:
+        image: bitnami/kafka:2
+        ports:
+            - 9092:9092
+        volumes:
+            - local_kafka_data:/bitnami
+        environment:
+            - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+            - ALLOW_PLAINTEXT_LISTENER=yes
+            - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+        depends_on:
+            - zookeeper
+        container_name: kafka
+    zookeeper:
+        image: bitnami/zookeeper:3
+        ports:
+            - 2181:2181
+        volumes:
+            - local_zookeeper_data:/bitnami
+        environment:
+            - ALLOW_ANONYMOUS_LOGIN=yes
+        container_name: zookeeper
+    refresher:
+        image: tower_analytics_backend
+        depends_on:
+            - postgres
+        volumes:
+            - ./srv/tower-analytics-backend/:/app
+        env_file:
+            - ./srv/tower-analytics-backend/.envs/.local/.django
+            - ./srv/tower-analytics-backend/.envs/.local/.postgres
+        command: ./launcher
+        environment:
+            - APP=refresher
+        container_name: refresher
+    rollups_processor:
+        image: tower_analytics_backend
+        depends_on:
+            - postgres
+            - kafka
+        volumes:
+            - ./srv/tower-analytics-backend/:/app
+        env_file:
+            - ./srv/tower-analytics-backend/.envs/.local/.django
+            - ./srv/tower-analytics-backend/.envs/.local/.postgres
+            - ./srv/tower-analytics-backend/.envs/.local/.kafka
+        command: ./launcher
+        environment:
+            - APP=rollups
+        container_name: rollups_processor
+networks:
+    default:
+        external:
+            name: awxcompose_default
