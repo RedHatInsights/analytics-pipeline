@@ -888,7 +888,14 @@ class CloudBuilder:
             return 'Dockerfile'
 
         # build the entrypoing/command for the container ...
-        srcpath = os.path.join(self.checkouts_root, 'integration_tests')
+
+        ipath = os.path.join(self.checkouts_root, 'integration_tests')
+        srcpath = os.path.join(self.checkouts_root, 'tower-analytics-frontend')
+        
+        wscript = os.path.join(srcpath, 'wait_for_stack.sh')
+        if not os.path.exists(wscript):
+            shutil.copy(os.path.join(ipath, 'wait_for_stack.sh'), wscript)
+
         basecmd = '/bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s '
         if self.args.puppeteer:
             testcmd = basecmd + 'npm run tests:integration:puppeteer"'
@@ -909,6 +916,11 @@ class CloudBuilder:
             'entrypoint': '',
             'depends_on': ['sso.local.redhat.com', 'kcadmin', 'aafrontend', 'aabackend'],
             'command': testcmd,
+            'environment': {
+                'CYPRESS_CLOUD_BASE_URL': 'https://prod.foo.redhat.com:8443',
+                'CYPRESS_CLOUD_USERNAME': 'bob',
+                'CYPRESS_CLOUD_PASSWORD': 'redhat1234'
+            }
         }
 
         # these are very important for cypress to work in a container ...

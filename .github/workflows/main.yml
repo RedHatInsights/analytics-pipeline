@@ -38,7 +38,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: screens
-          path: ./srv/integration_tests/cypress/screenshots
+          path: ./srv/tower-analytics-frontend/cypress/screenshots
           retention-days: 5
         if: always()
 
@@ -46,6 +46,6 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: video
-          path: ./srv/integration_tests/cypress/videos
+          path: ./srv/tower-analytics-frontend/cypress/videos
           retention-days: 5
         if: always()      
