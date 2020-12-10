@@ -365,22 +365,52 @@ class LandingPageFrontend(GenericFrontendComponent):
 
         logger.info(f'configure {self.www_app_name}')
 
+        '''
         # kill the hashed filenames ...
         cfile = os.path.join(self.srcpath, 'config', 'base.webpack.config.js')
-        with open(cfile, 'r') as f:
-            cdata = f.read()
-        if '.[hash]' in cdata:
-            cdata = cdata.replace('.[hash]', '')
-            with open(cfile, 'w') as f:
-                f.write(cdata)
+        if os.path.exists(cfile):
+            with open(cfile, 'r') as f:
+                cdata = f.read()
+            if '.[hash]' in cdata:
+                cdata = cdata.replace('.[hash]', '')
+                with open(cfile, 'w') as f:
+                    f.write(cdata)
 
         # kill the /beta prefix ...
         cfg = os.path.join(self.srcpath, 'config', 'webpack.common.js')
-        with open(cfg, 'r') as f:
-            cdata = f.read()
-        cdata = cdata.replace('/beta/apps', '/apps')
-        with open(cfg, 'w') as f:
-            f.write(cdata)
+        if os.path.exists(cfg):
+            with open(cfg, 'r') as f:
+                cdata = f.read()
+            cdata = cdata.replace('/beta/apps', '/apps')
+            with open(cfg, 'w') as f:
+                f.write(cdata)
+        '''
+
+        # Landing updated to webpack 5 and consolidated configs to a single file ...
+        """
+        # landing-page-frontend/config/prod.webpack.config.js
+         21 module.exports = {
+         22   ...mutateConfig(webpackConfig),
+         23   plugins: mutatePlugins(plugins),
+         24   output: {
+         25     filename: 'js/[name].js',
+         26   }
+         27 };
+        """
+
+        fn = os.path.join(self.srcpath, 'config', 'prod.webpack.config.js')
+        with open(fn, 'r') as f:
+            flines = f.readlines()
+        changed = False
+        if flines[-2].strip().startswith('plugins: '):
+            flines.insert(-1, '  output: {\n')
+            flines.insert(-1, "    filename: 'js/[name].js'\n")
+            flines.insert(-1, '  }\n')
+            changed = True
+
+        if changed:
+            with open(fn, 'w') as f:
+                f.write(''.join(flines))
 
 
 class InsightsChrome(GenericFrontendComponent):
