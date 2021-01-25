@@ -93,7 +93,7 @@ services:
             - sso.local.redhat.com
             - kcadmin
             - aabackend
-        command: /bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s npm run integration_headless"
+        command: /bin/bash -c "cd /app && npm install && ./wait_for_stack.sh && timeout -s SIGKILL 1000s cypress run --headless --browser chrome"
         environment:
             CYPRESS_CLOUD_BASE_URL: https://prod.foo.redhat.com:8443
             CYPRESS_CLOUD_USERNAME: bob
