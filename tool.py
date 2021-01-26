@@ -947,9 +947,9 @@ class CloudBuilder:
             'depends_on': ['sso.local.redhat.com', 'kcadmin', 'aafrontend', 'aabackend'],
             'command': testcmd,
             'environment': {
-                'CYPRESS_CLOUD_BASE_URL': 'https://prod.foo.redhat.com:8443',
-                'CYPRESS_CLOUD_USERNAME': 'bob',
-                'CYPRESS_CLOUD_PASSWORD': 'redhat1234'
+                'CYPRESS_BASE_URL': 'https://prod.foo.redhat.com:8443',
+                'CYPRESS_USERNAME': 'bob',
+                'CYPRESS_PASSWORD': 'redhat1234'
             }
         }
 
