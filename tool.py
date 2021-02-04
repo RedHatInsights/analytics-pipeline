@@ -930,7 +930,7 @@ class CloudBuilder:
         if self.args.puppeteer:
             testcmd = basecmd + 'npm run tests:integration:puppeteer"'
         elif self.args.cypress or self.args.cypress_debug:
-            testcmd = basecmd + 'cypress run --headless --browser chrome"'
+            testcmd = basecmd + 'cypress run --headless --record --key 5f627192-bc92-4880-bf56-ff87cb9e2876 --browser chrome"'
         else:
             testcmd = basecmd + './node_modules/jest/bin/jest.js src/index.test.js"'
 
