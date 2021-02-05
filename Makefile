@@ -70,6 +70,7 @@ stack_ci_cypress: clean venv
 stack_ci_cypress_debug: clean venv
 	pwd
 	if [[ -f /etc/issue ]]; then cat /etc/issue; fi;
+	echo ${CYPRESS_RECORD_KEY}
 	uname -a
 	if [[ "$(shell uname)" == "Darwin" ]]; then echo "$(shell top -l 1 -s 0 | grep PhysMem)"; else free -m; fi;
 	if [[ "$(shell uname)" == "Darwin" ]]; then echo "$(shell sysctl -n machdep.cpu.brand_string)"; else cat /proc/cpuinfo; fi;

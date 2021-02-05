@@ -205,17 +205,17 @@ class HostVerifier:
 
 
 ''' When npm install was run from the mac but is being used by webpack devserver in linux ...
-| Child mini-css-extract-plugin node_modules/css-loader/dist/cjs.js!node_modules/sass-loader/dist/cjs.js!node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css:                                                                                                                                                
-|     Entrypoint mini-css-extract-plugin = *                                                                                                                                                                                                                                                                                                                      
-|     [./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css] 1.18 KiB {mini-css-extract-plugin} [built] [failed] [1 error]                                                                                                     
-|                                                                                                                                                                  
-|     ERROR in ./node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css (./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css)                                               
-|     Module build failed (from ./node_modules/sass-loader/dist/cjs.js):                                                                                           
-|     Error: Missing binding /app/node_modules/node-sass/vendor/linux-x64-64/binding.node                                                                          
-|     Node Sass could not find a binding for your current environment: Linux 64-bit with Node.js 10.x                                                              
-|                                                                                                                                                                                                                                                                                                                                                                 
-|     Found bindings for the following environments:                                                                                                                                                                                                                                                                                                              
-|       - OS X 64-bit with Node.js 10.x   
+| Child mini-css-extract-plugin node_modules/css-loader/dist/cjs.js!node_modules/sass-loader/dist/cjs.js!node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css:
+|     Entrypoint mini-css-extract-plugin = *
+|     [./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css] 1.18 KiB {mini-css-extract-plugin} [built] [failed] [1 error]
+|
+|     ERROR in ./node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css (./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./node_modules/@patternfly/react-core/node_modules/@patternfly/react-styles/css/components/Alert/alert.css)
+|     Module build failed (from ./node_modules/sass-loader/dist/cjs.js):
+|     Error: Missing binding /app/node_modules/node-sass/vendor/linux-x64-64/binding.node
+|     Node Sass could not find a binding for your current environment: Linux 64-bit with Node.js 10.x
+|
+|     Found bindings for the following environments:
+|       - OS X 64-bit with Node.js 10.x
 '''
 
 class GenericFrontendComponent:
@@ -290,7 +290,7 @@ class GenericFrontendComponent:
             return
 
         cmd = ' '.join([get_npm_path(), 'install'])
-        logger.info(f'installing npm deps for {self.name}') 
+        logger.info(f'installing npm deps for {self.name}')
         logger.info(cmd)
         res = subprocess.run(cmd, shell=True, cwd=self.srcpath)
         if res.returncode != 0:
@@ -320,7 +320,7 @@ class GenericFrontendComponent:
             return
 
         cmd = ' '.join([get_npm_path(), 'run', 'build'])
-        logger.info(f'building static version of {self.name}') 
+        logger.info(f'building static version of {self.name}')
         logger.info(cmd)
         res = subprocess.run(cmd, shell=True, cwd=self.srcpath)
         if res.returncode != 0:
@@ -354,7 +354,7 @@ class GenericFrontendComponent:
 """
 insights_proxy| GET /apps/landing/js/App.js from http://webroot/apps/landing/js/App.js
 webroot       | 2020/11/02 16:18:42 [error] 22#22: *19 open() "/usr/share/nginx/html/apps/landing/js/App.js" failed (2: No such file or directory), client: 172.29.0.6, server: localhost, request: "GET /apps/landing/js/App.js HTTP/1.1", host: "webroot", referrer: "https://prod.foo.redhat.com:8443/"
-webroot       | 172.29.0.6 - - [02/Nov/2020:16:18:42 +0000] "GET /apps/landing/js/App.js HTTP/1.1" 404 555 "https://prod.foo.redhat.com:8443/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/85.0.4183.121 Safari/537.36" "-"  
+webroot       | 172.29.0.6 - - [02/Nov/2020:16:18:42 +0000] "GET /apps/landing/js/App.js HTTP/1.1" 404 555 "https://prod.foo.redhat.com:8443/" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/85.0.4183.121 Safari/537.36" "-"
 """
 class LandingPageFrontend(GenericFrontendComponent):
 
@@ -537,7 +537,7 @@ class CloudBuilder:
             res = subprocess.run(cmd, shell=True)
             if res.returncode != 0:
                 raise Exception(f'cloning {git_url} failed')
-        
+
         # RESET ALL CHANGES
         cmd = 'git reset --hard'
         res = subprocess.run(cmd, cwd=srcdir, shell=True)
@@ -614,7 +614,7 @@ class CloudBuilder:
         tag_base = 'gcr.io/ansible-tower-engineering'
         compose = compose.replace('${DEV_DOCKER_TAG_BASE}', tag_base)
 
-        # VOLUMES 
+        # VOLUMES
         abs_src = os.path.abspath(srcdir)
         compose = compose.replace('../:/awx_devel', abs_src + '/:/awx_devel')
         compose = compose.replace('../awx/', os.path.join(abs_src, 'awx') + '/')
@@ -921,7 +921,7 @@ class CloudBuilder:
 
         ipath = os.path.join(self.checkouts_root, 'integration_tests')
         srcpath = os.path.join(self.checkouts_root, 'tower-analytics-frontend')
-        
+
         wscript = os.path.join(srcpath, 'wait_for_stack.sh')
         if not os.path.exists(wscript):
             shutil.copy(os.path.join(ipath, 'wait_for_stack.sh'), wscript)
@@ -930,10 +930,11 @@ class CloudBuilder:
         if self.args.puppeteer:
             testcmd = basecmd + 'npm run tests:integration:puppeteer"'
         elif self.args.cypress or self.args.cypress_debug:
-            testcmd = basecmd + 'cypress run --headless --record --key 5f627192-bc92-4880-bf56-ff87cb9e2876 --browser chrome"'
+            testcmd = basecmd + 'cypress run --headless --record --browser chrome"'
         else:
             testcmd = basecmd + './node_modules/jest/bin/jest.js src/index.test.js"'
 
+        # Testing if we have an env variable
         svc = {
             'container_name': 'integration',
             'image': 'aa_integration:latest',
@@ -947,6 +948,8 @@ class CloudBuilder:
             'depends_on': ['sso.local.redhat.com', 'kcadmin', 'aafrontend', 'aabackend'],
             'command': testcmd,
             'environment': {
+                #  Testing if cypress is running with a env variable
+                'CYPRESS_RECORD_KEY': os.getenv('CYPRESS_RECORD_KEY'),
                 'CYPRESS_BASE_URL': 'https://prod.foo.redhat.com:8443',
                 'CYPRESS_USERNAME': 'bob',
                 'CYPRESS_PASSWORD': 'redhat1234'
