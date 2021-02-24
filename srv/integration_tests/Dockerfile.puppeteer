@@ -1,5 +1,5 @@
 #from buildkite/puppeteer
-from cypress/browsers:chrome67
+from cypress/browsers:chrome87
 
 RUN apt -y update && apt -y install curl && apt -y clean
 RUN useradd runner

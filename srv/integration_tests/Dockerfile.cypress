@@ -1,7 +1,7 @@
 #from buildkite/puppeteer
 #from cypress/browsers:chrome67
 #from cypress/browsers:node10.16.0-chrome77
-from cypress/included:5.5.0
+from cypress/included:6.5.0
 
 ## included container already has curl ...
 #RUN apt update 
